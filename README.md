@@ -22,30 +22,65 @@ supabase/
   migrations/          DB スキーマ（SQL マイグレーション）
 ```
 
-## ローカル開発
+## 開発の始め方（クラウドの Supabase を使う）
 
-必要なもの: Node.js 20 以上、Docker（ローカル Supabase 用）
+必要なもの: Node.js 20 以上（Docker は不要）
+
+### 1. Supabase のプロジェクトを作る
+
+1. https://supabase.com で新しいプロジェクトを作成
+2. ダッシュボードの **SQL Editor** を開き、`supabase/migrations/` 内の SQL ファイルを**ファイル名の順に**貼り付けて実行
+3. 開発中は **Authentication > Sign In / Providers > Email** の「Confirm email」をオフにしておくと、登録後すぐログインできます
+
+### 2. 接続情報を設定する
+
+`.env.local` はリポジトリに含まれていません（秘密情報を含むため `.gitignore` で除外）。ひな形からコピーして作ります。
 
 ```bash
-npm install
-npm run db:start        # ローカル Supabase を起動（初回はイメージ取得に時間がかかります）
 cp .env.example .env.local
 ```
 
-`db:start` の出力に表示される `API URL` と `anon key` を `.env.local` に設定してから:
+`.env.local` に次の値を設定します。
+
+| 変数 | 値の場所 |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | Project Settings > Data API（または「Connect」ボタン）のプロジェクト URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Project Settings > API Keys の **Publishable key**（`sb_publishable_...`）または旧形式の **anon key** |
+
+> `secret` / `service_role` キーは絶対に入れないでください（ブラウザに公開されます）。
+
+### 3. 起動する
 
 ```bash
+npm install
 npm run dev
 ```
 
 http://localhost:3000 を開き、「新規登録」でアカウントを作成します。
+`.env.local` を書き換えたら `npm run dev` を再起動してください。
 
-- Supabase Studio（DB 管理画面）: http://127.0.0.1:54323
-- スキーマを変更したら `supabase/migrations/` に SQL を追加し、`npm run db:reset` で反映
-- `npm run db:types` で DB の型定義を生成
+### DB スキーマを変更するとき
 
-## クラウドの Supabase に接続する
+新しい SQL を `supabase/migrations/` に `YYYYMMDDHHMMSS_説明.sql` の形式で追加し、SQL Editor で実行します。
 
-1. Supabase でプロジェクトを作成
-2. `npx supabase link --project-ref <project-ref>` → `npx supabase db push` でスキーマを反映
-3. `.env.local`（本番はホスティング側の環境変数）に Project Settings > API の URL と anon key を設定
+Supabase CLI を使うと、SQL Editor に貼り付ける代わりにコマンドで反映できます（任意）:
+
+```bash
+npx supabase login
+npx supabase link --project-ref <project-ref>   # project-ref はダッシュボード URL の英数字部分
+npx supabase db push                            # 未反映のマイグレーションを適用
+npx supabase gen types typescript --linked > src/lib/supabase/database.types.ts   # 型定義を生成
+```
+
+## （任意）ローカルの Supabase を使う
+
+Docker Desktop を起動した状態で:
+
+```bash
+npm run db:start   # ローカル Supabase を起動。表示される API URL と anon key を .env.local に設定
+npm run db:reset   # マイグレーションを適用し直す（データは消えます）
+npm run db:types   # 型定義を生成
+npm run db:stop    # 停止
+```
+
+Supabase Studio（DB 管理画面）: http://127.0.0.1:54323
