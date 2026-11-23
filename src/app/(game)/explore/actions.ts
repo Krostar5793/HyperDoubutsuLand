@@ -9,6 +9,8 @@ import {
   startExpedition,
   type AdvanceResult,
 } from "@/lib/game/expedition";
+import type { BattleState, Command } from "@/lib/game/battle";
+import { submitBattleTurn, type TurnResult } from "@/lib/game/battle-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function startExpeditionAction(areaId: number) {
@@ -51,4 +53,26 @@ export async function retreatAction(expeditionId: string): Promise<{ error?: str
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+export async function battleTurnAction(
+  battleId: string,
+  commands: Command[],
+): Promise<{ result?: TurnResult; error?: string }> {
+  const { user } = await requireUser();
+  try {
+    const result = await submitBattleTurn(createAdminClient(), user.id, battleId, commands);
+    if (result.finished) revalidatePath("/", "layout");
+    return { result };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
+/** 探索中の戦闘の状態を読み込む（画面の再読み込みや、探索の途中から戻ったとき） */
+export async function loadBattleAction(battleId: string): Promise<{ state?: BattleState; error?: string }> {
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.from("Battles").select("state").eq("id", battleId).maybeSingle();
+  if (error || !data) return { error: error?.message ?? "戦闘が見つかりません" };
+  return { state: data.state as unknown as BattleState };
 }

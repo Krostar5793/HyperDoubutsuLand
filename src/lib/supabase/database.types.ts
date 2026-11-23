@@ -147,6 +147,26 @@ isOneToOne: false
       referencedColumns: ["code"]
     }
                   ]
+                },"Battles": {
+                  Row: {
+                    "created_at": string,"expedition_id": string,"id": string,"owner_id": string,"state": NonNullable<Json>,"status": string,"turn": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "created_at"?: string,"expedition_id": string,"id"?: string,"owner_id": string,"state": NonNullable<Json>,"status"?: string,"turn"?: number,"updated_at"?: string
+                  }
+                  Update: {
+                    "created_at"?: string,"expedition_id"?: string,"id"?: string,"owner_id"?: string,"state"?: NonNullable<Json>,"status"?: string,"turn"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "Battles_expedition_id_fkey"
+      columns: ["expedition_id"]
+isOneToOne: false
+      referencedRelation: "Expeditions"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"Currencies": {
                   Row: {
                     "code": string,"name": string,"short_name": string,"sort_order": number
@@ -241,14 +261,14 @@ isOneToOne: false
                   ]
                 },"Expeditions": {
                   Row: {
-                    "area_id": number,"ended_at": string | null,"id": string,"log": NonNullable<Json>,"owner_id": string,"position": number,"started_at": string,"status": string
+                    "area_id": number,"battle_id": string | null,"ended_at": string | null,"id": string,"log": NonNullable<Json>,"owner_id": string,"party_state": NonNullable<Json>,"position": number,"started_at": string,"status": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "area_id": number,"ended_at"?: string | null,"id"?: string,"log"?: NonNullable<Json>,"owner_id": string,"position"?: number,"started_at"?: string,"status"?: string
+                    "area_id": number,"battle_id"?: string | null,"ended_at"?: string | null,"id"?: string,"log"?: NonNullable<Json>,"owner_id": string,"party_state"?: NonNullable<Json>,"position"?: number,"started_at"?: string,"status"?: string
                   }
                   Update: {
-                    "area_id"?: number,"ended_at"?: string | null,"id"?: string,"log"?: NonNullable<Json>,"owner_id"?: string,"position"?: number,"started_at"?: string,"status"?: string
+                    "area_id"?: number,"battle_id"?: string | null,"ended_at"?: string | null,"id"?: string,"log"?: NonNullable<Json>,"owner_id"?: string,"party_state"?: NonNullable<Json>,"position"?: number,"started_at"?: string,"status"?: string
                   }
                   Relationships: [
                     {
@@ -256,6 +276,12 @@ isOneToOne: false
       columns: ["area_id"]
 isOneToOne: false
       referencedRelation: "Areas"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "Expeditions_battle_id_fkey"
+      columns: ["battle_id"]
+isOneToOne: false
+      referencedRelation: "Battles"
       referencedColumns: ["id"]
     }
                   ]
@@ -273,16 +299,42 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
-                },"Monster_Species": {
+                },"Monster_Skills": {
                   Row: {
-                    "atk": number | null,"def": number | null,"description": string | null,"element_id": number | null,"hp": number | null,"id": number,"image_path": string | null,"int": number | null,"mp": number | null,"name": string,"rank": string | null,"size": number | null,"skill_1": number | null,"skill_2": number | null,"skill_3": number | null,"skill_4": number | null,"skill_5": number | null,"spd": number | null
+                    "monster_id": string,"skill_id": number,"slot": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "atk"?: number | null,"def"?: number | null,"description"?: string | null,"element_id"?: number | null,"hp"?: number | null,"id"?: number,"image_path"?: string | null,"int"?: number | null,"mp"?: number | null,"name": string,"rank"?: string | null,"size"?: number | null,"skill_1"?: number | null,"skill_2"?: number | null,"skill_3"?: number | null,"skill_4"?: number | null,"skill_5"?: number | null,"spd"?: number | null
+                    "monster_id": string,"skill_id": number,"slot": number
                   }
                   Update: {
-                    "atk"?: number | null,"def"?: number | null,"description"?: string | null,"element_id"?: number | null,"hp"?: number | null,"id"?: number,"image_path"?: string | null,"int"?: number | null,"mp"?: number | null,"name"?: string,"rank"?: string | null,"size"?: number | null,"skill_1"?: number | null,"skill_2"?: number | null,"skill_3"?: number | null,"skill_4"?: number | null,"skill_5"?: number | null,"spd"?: number | null
+                    "monster_id"?: string,"skill_id"?: number,"slot"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "Monster_Skills_monster_id_fkey"
+      columns: ["monster_id"]
+isOneToOne: false
+      referencedRelation: "Player_Monsters"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "Monster_Skills_skill_id_fkey"
+      columns: ["skill_id"]
+isOneToOne: false
+      referencedRelation: "Skills"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"Monster_Species": {
+                  Row: {
+                    "atk": number | null,"def": number | null,"description": string | null,"element_id": number | null,"exp_multiplier": number,"hp": number | null,"id": number,"image_path": string | null,"int": number | null,"mp": number | null,"name": string,"rank": string | null,"size": number | null,"spd": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "atk"?: number | null,"def"?: number | null,"description"?: string | null,"element_id"?: number | null,"exp_multiplier"?: number,"hp"?: number | null,"id"?: number,"image_path"?: string | null,"int"?: number | null,"mp"?: number | null,"name": string,"rank"?: string | null,"size"?: number | null,"spd"?: number | null
+                  }
+                  Update: {
+                    "atk"?: number | null,"def"?: number | null,"description"?: string | null,"element_id"?: number | null,"exp_multiplier"?: number,"hp"?: number | null,"id"?: number,"image_path"?: string | null,"int"?: number | null,"mp"?: number | null,"name"?: string,"rank"?: string | null,"size"?: number | null,"spd"?: number | null
                   }
                   Relationships: [
                     {
@@ -297,36 +349,6 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "Ranks"
       referencedColumns: ["code"]
-    },{
-      foreignKeyName: "Monster_Species_skill_1_fkey"
-      columns: ["skill_1"]
-isOneToOne: false
-      referencedRelation: "Skills"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "Monster_Species_skill_2_fkey"
-      columns: ["skill_2"]
-isOneToOne: false
-      referencedRelation: "Skills"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "Monster_Species_skill_3_fkey"
-      columns: ["skill_3"]
-isOneToOne: false
-      referencedRelation: "Skills"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "Monster_Species_skill_4_fkey"
-      columns: ["skill_4"]
-isOneToOne: false
-      referencedRelation: "Skills"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "Monster_Species_skill_5_fkey"
-      columns: ["skill_5"]
-isOneToOne: false
-      referencedRelation: "Skills"
-      referencedColumns: ["id"]
     }
                   ]
                 },"Player_Currencies": {
@@ -371,47 +393,17 @@ isOneToOne: false
                   ]
                 },"Player_Monsters": {
                   Row: {
-                    "alloc_atk": number,"alloc_def": number,"alloc_hp": number,"alloc_int": number,"alloc_mp": number,"alloc_spd": number,"exp": number,"id": string,"in_storage": boolean,"level": number,"level_cap": number,"limit_points": number,"nickname": string | null,"obtained_at": string,"owner_id": string,"party_slot": number | null,"skill_1": number | null,"skill_2": number | null,"skill_3": number | null,"skill_4": number | null,"skill_5": number | null,"source": string | null,"species_id": number
+                    "alloc_atk": number,"alloc_def": number,"alloc_hp": number,"alloc_int": number,"alloc_mp": number,"alloc_spd": number,"exp": number,"id": string,"in_storage": boolean,"level": number,"level_cap": number,"limit_points": number,"nickname": string | null,"obtained_at": string,"owner_id": string,"party_slot": number | null,"source": string | null,"species_id": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "alloc_atk"?: number,"alloc_def"?: number,"alloc_hp"?: number,"alloc_int"?: number,"alloc_mp"?: number,"alloc_spd"?: number,"exp"?: number,"id"?: string,"in_storage"?: boolean,"level"?: number,"level_cap"?: number,"limit_points"?: number,"nickname"?: string | null,"obtained_at"?: string,"owner_id": string,"party_slot"?: number | null,"skill_1"?: number | null,"skill_2"?: number | null,"skill_3"?: number | null,"skill_4"?: number | null,"skill_5"?: number | null,"source"?: string | null,"species_id": number
+                    "alloc_atk"?: number,"alloc_def"?: number,"alloc_hp"?: number,"alloc_int"?: number,"alloc_mp"?: number,"alloc_spd"?: number,"exp"?: number,"id"?: string,"in_storage"?: boolean,"level"?: number,"level_cap"?: number,"limit_points"?: number,"nickname"?: string | null,"obtained_at"?: string,"owner_id": string,"party_slot"?: number | null,"source"?: string | null,"species_id": number
                   }
                   Update: {
-                    "alloc_atk"?: number,"alloc_def"?: number,"alloc_hp"?: number,"alloc_int"?: number,"alloc_mp"?: number,"alloc_spd"?: number,"exp"?: number,"id"?: string,"in_storage"?: boolean,"level"?: number,"level_cap"?: number,"limit_points"?: number,"nickname"?: string | null,"obtained_at"?: string,"owner_id"?: string,"party_slot"?: number | null,"skill_1"?: number | null,"skill_2"?: number | null,"skill_3"?: number | null,"skill_4"?: number | null,"skill_5"?: number | null,"source"?: string | null,"species_id"?: number
+                    "alloc_atk"?: number,"alloc_def"?: number,"alloc_hp"?: number,"alloc_int"?: number,"alloc_mp"?: number,"alloc_spd"?: number,"exp"?: number,"id"?: string,"in_storage"?: boolean,"level"?: number,"level_cap"?: number,"limit_points"?: number,"nickname"?: string | null,"obtained_at"?: string,"owner_id"?: string,"party_slot"?: number | null,"source"?: string | null,"species_id"?: number
                   }
                   Relationships: [
                     {
-      foreignKeyName: "Player_Monsters_skill_1_fkey"
-      columns: ["skill_1"]
-isOneToOne: false
-      referencedRelation: "Skills"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "Player_Monsters_skill_2_fkey"
-      columns: ["skill_2"]
-isOneToOne: false
-      referencedRelation: "Skills"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "Player_Monsters_skill_3_fkey"
-      columns: ["skill_3"]
-isOneToOne: false
-      referencedRelation: "Skills"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "Player_Monsters_skill_4_fkey"
-      columns: ["skill_4"]
-isOneToOne: false
-      referencedRelation: "Skills"
-      referencedColumns: ["id"]
-    },{
-      foreignKeyName: "Player_Monsters_skill_5_fkey"
-      columns: ["skill_5"]
-isOneToOne: false
-      referencedRelation: "Skills"
-      referencedColumns: ["id"]
-    },{
       foreignKeyName: "Player_Monsters_species_id_fkey"
       columns: ["species_id"]
 isOneToOne: false
@@ -461,16 +453,56 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
-                },"Skills": {
+                },"Size_Rules": {
                   Row: {
-                    "description": string | null,"element_id": number | null,"id": number,"name": string | null
+                    "size": number,"skill_slots": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "description"?: string | null,"element_id"?: number | null,"id"?: number,"name"?: string | null
+                    "size": number,"skill_slots"?: number
                   }
                   Update: {
-                    "description"?: string | null,"element_id"?: number | null,"id"?: number,"name"?: string | null
+                    "size"?: number,"skill_slots"?: number
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"Skill_Effects": {
+                  Row: {
+                    "chance": number,"skill_id": number,"status_effect_id": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "chance"?: number,"skill_id": number,"status_effect_id": number
+                  }
+                  Update: {
+                    "chance"?: number,"skill_id"?: number,"status_effect_id"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "Skill_Effects_skill_id_fkey"
+      columns: ["skill_id"]
+isOneToOne: false
+      referencedRelation: "Skills"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "Skill_Effects_status_effect_id_fkey"
+      columns: ["status_effect_id"]
+isOneToOne: false
+      referencedRelation: "Status_Effects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"Skills": {
+                  Row: {
+                    "accuracy": number,"attack_stat": string,"category": string,"defense_stat": string,"description": string | null,"element_id": number | null,"id": number,"mp_cost": number,"name": string | null,"power": number,"target": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "accuracy"?: number,"attack_stat"?: string,"category"?: string,"defense_stat"?: string,"description"?: string | null,"element_id"?: number | null,"id"?: number,"mp_cost"?: number,"name"?: string | null,"power"?: number,"target"?: string
+                  }
+                  Update: {
+                    "accuracy"?: number,"attack_stat"?: string,"category"?: string,"defense_stat"?: string,"description"?: string | null,"element_id"?: number | null,"id"?: number,"mp_cost"?: number,"name"?: string | null,"power"?: number,"target"?: string
                   }
                   Relationships: [
                     {
@@ -513,6 +545,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"Species_Skills": {
+                  Row: {
+                    "skill_id": number,"slot": number,"species_id": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "skill_id": number,"slot": number,"species_id": number
+                  }
+                  Update: {
+                    "skill_id"?: number,"slot"?: number,"species_id"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "Species_Skills_skill_id_fkey"
+      columns: ["skill_id"]
+isOneToOne: false
+      referencedRelation: "Skills"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "Species_Skills_species_id_fkey"
+      columns: ["species_id"]
+isOneToOne: false
+      referencedRelation: "Monster_Species"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"Species_Status_Resistances": {
                   Row: {
                     "level": string,"species_id": number,"status_effect_id": number
@@ -547,14 +605,14 @@ isOneToOne: false
                   ]
                 },"Status_Effects": {
                   Row: {
-                    "description": string | null,"id": number,"name": string
+                    "description": string | null,"effect_type": string,"id": number,"name": string,"stages": number,"stat": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "description"?: string | null,"id"?: number,"name": string
+                    "description"?: string | null,"effect_type"?: string,"id"?: number,"name": string,"stages"?: number,"stat"?: string | null
                   }
                   Update: {
-                    "description"?: string | null,"id"?: number,"name"?: string
+                    "description"?: string | null,"effect_type"?: string,"id"?: number,"name"?: string,"stages"?: number,"stat"?: string | null
                   }
                   Relationships: [
                     
@@ -602,6 +660,12 @@ isOneToOne: false
             "allocate_limit_point":
 { Args: { "p_monster_id": string,"p_stat": string }; Returns: number
                            },
+"begin_expedition_battle":
+{ Args: { "p_event": Json,"p_expected_position": number,"p_expedition_id": string,"p_state": Json }; Returns: string
+                           },
+"commit_battle_turn":
+{ Args: { "p_battle_id": string,"p_boss"?: boolean,"p_event"?: Json,"p_exp"?: Json,"p_expected_turn": number,"p_item_id"?: number,"p_party_state"?: Json,"p_recruit"?: Json,"p_result"?: string,"p_state": Json }; Returns: Json
+                           },
 "commit_expedition_step":
 { Args: { "p_advance": boolean,"p_event": Json,"p_expected_position": number,"p_expedition_id": string,"p_finish"?: string,"p_loot"?: Json,"p_recruit"?: Json }; Returns: Json
                            },
@@ -645,6 +709,9 @@ isOneToOne: false
                            },
 "save_ui_layout":
 { Args: { "p_background_color": string,"p_background_image_path": string,"p_elements": Json,"p_screen_key": string }; Returns: undefined
+                           },
+"skill_slots_for_species":
+{ Args: { "p_species_id": number }; Returns: number
                            },
 "spend_currency":
 { Args: { "p_amount": number,"p_currency_code": string,"p_owner_id": string }; Returns: number

@@ -5,7 +5,7 @@ export const STAT_LABELS: Record<Stat, string> = {
   mp: "MP",
   atk: "攻撃",
   def: "防御",
-  int: "知力",
+  int: "賢さ",
   spd: "素早さ",
 };
 

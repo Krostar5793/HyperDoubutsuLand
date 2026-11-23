@@ -1,7 +1,9 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { planStep, type AreaConfig, type BattleResolver, type StepEvent } from "./explore";
-import { toRankTable, type RankData } from "./ranks";
+import type { Database } from "@/lib/supabase/database.types";
+import { buildBattle } from "./battle-server";
+import { check, one, rows } from "./db";
+import { planStep, type AreaConfig, type AreaLoot, type StepEvent } from "./explore";
 
 /**
  * 探索の進行（サーバー専用）。引数の supabase は管理者クライアント（createAdminClient）を渡す。
@@ -11,26 +13,7 @@ import { toRankTable, type RankData } from "./ranks";
  * ポーズ中は呼ぶのを止める。引き返すときは retreatExpedition を呼ぶ。
  */
 
-type Admin = SupabaseClient;
-
-type Res<T> = { data: T; error: { message: string } | null };
-
-function check<T>(res: Res<T>): T {
-  if (res.error) throw new Error(res.error.message);
-  return res.data;
-}
-
-/** 1 行だけ返るはずのクエリ（.single()）用。見つからなければエラー */
-function one<T>(res: Res<T>): NonNullable<T> {
-  const data = check(res);
-  if (data === null || data === undefined) throw new Error("データが見つかりません");
-  return data as NonNullable<T>;
-}
-
-/** 複数行のクエリ用（null なら空配列） */
-function rows<T>(res: Res<T[] | null>): T[] {
-  return check(res) ?? [];
-}
+type Admin = SupabaseClient<Database>;
 
 export async function loadAreaConfig(supabase: Admin, areaId: number): Promise<AreaConfig> {
   const area = one(
@@ -49,7 +32,7 @@ export async function loadAreaConfig(supabase: Admin, areaId: number): Promise<A
     max_enemies: area.max_enemies,
     squares: rows(squares),
     encounters: rows(encounters),
-    loot: rows(loot),
+    loot: rows(loot) as AreaLoot[],
     bosses: rows(bosses),
   };
 }
@@ -70,72 +53,82 @@ export async function startExpedition(supabase: Admin, userId: string, areaId: n
 
 export type AdvanceResult = {
   event: StepEvent;
-  finish: "cleared" | "failed" | null;
+  finish: "cleared" | null;
   position: number;
   totalSquares: number;
-  details: Record<string, unknown>;
+  /** 戦闘が始まったときの戦闘 ID */
+  battleId: string | null;
 };
 
-/** 1 マス進める（またはボス戦） */
+/** 1 マス進める（モンスターやボスに出会ったら戦闘を始める） */
 export async function advanceExpedition(
   supabase: Admin,
   userId: string,
   expeditionId: string,
-  options: { battle?: BattleResolver; random?: () => number } = {},
+  options: { random?: () => number } = {},
 ): Promise<AdvanceResult> {
   const exp = one(
-    await supabase.from("Expeditions").select("id, owner_id, area_id, status, position").eq("id", expeditionId).single(),
+    await supabase
+      .from("Expeditions")
+      .select("id, owner_id, area_id, status, position, battle_id, party_state")
+      .eq("id", expeditionId)
+      .single(),
   );
   if (exp.owner_id !== userId) throw new Error("探索が見つかりません");
   if (exp.status !== "exploring") throw new Error("この探索はすでに終わっています");
+  if (exp.battle_id) throw new Error("戦闘中です");
 
   const area = await loadAreaConfig(supabase, exp.area_id);
+  const plan = planStep(area, exp.position, { random: options.random });
 
-  const speciesIds = [
-    ...new Set([...area.encounters.map((e) => e.species_id), ...area.bosses.map((b) => b.species_id)]),
-  ];
-  const [owned, species, ranks] = await Promise.all([
-    supabase.from("Player_Monsters").select("species_id").eq("owner_id", userId).in("species_id", speciesIds),
-    supabase.from("Monster_Species").select("id, rank").in("id", speciesIds),
-    supabase.from("Ranks").select("code, exp_rate, recruit_rate"),
-  ]);
+  if (plan.encounter) {
+    const state = await buildBattle(
+      supabase,
+      userId,
+      plan.encounter.enemies,
+      plan.encounter.boss,
+      exp.party_state as Record<string, { hp: number; mp: number }>,
+    );
+    const battleId = check(
+      await supabase.rpc("begin_expedition_battle", {
+        p_expedition_id: expeditionId,
+        p_expected_position: exp.position,
+        p_state: state as never,
+        p_event: plan.event as never,
+      }),
+    ) as string;
+    return { event: plan.event, finish: null, position: exp.position, totalSquares: area.squares.length, battleId };
+  }
 
-  const plan = planStep(area, exp.position, {
-    ownedSpeciesIds: new Set(rows(owned).map((m) => m.species_id as number)),
-    speciesRanks: new Map(rows(species).map((s) => [s.id as number, s.rank as string | null])),
-    ranks: toRankTable(rows(ranks) as RankData[]),
-    battle: options.battle,
-    random: options.random,
-  });
-
-  const details = check(
+  check(
     await supabase.rpc("commit_expedition_step", {
       p_expedition_id: expeditionId,
       p_expected_position: exp.position,
       p_advance: plan.advance,
-      p_event: plan.event,
-      p_loot: plan.loot,
-      p_recruit: plan.recruit,
-      p_finish: plan.finish,
+      p_event: plan.event as never,
+      p_loot: plan.loot as never,
+      p_recruit: null as never,
+      p_finish: plan.finish as string,
     }),
-  ) as Record<string, unknown>;
+  );
 
   return {
     event: plan.event,
     finish: plan.finish,
     position: exp.position + (plan.advance ? 1 : 0),
     totalSquares: area.squares.length,
-    details,
+    battleId: null,
   };
 }
 
 /** 引き返す（拾ったものは受け取れる。クリア報酬はなし） */
 export async function retreatExpedition(supabase: Admin, userId: string, expeditionId: string) {
   const exp = one(
-    await supabase.from("Expeditions").select("owner_id, status, position").eq("id", expeditionId).single(),
+    await supabase.from("Expeditions").select("owner_id, status, position, battle_id").eq("id", expeditionId).single(),
   );
   if (exp.owner_id !== userId) throw new Error("探索が見つかりません");
   if (exp.status !== "exploring") throw new Error("この探索はすでに終わっています");
+  if (exp.battle_id) throw new Error("戦闘中は引き返せません");
 
   check(
     await supabase.rpc("commit_expedition_step", {
@@ -144,7 +137,7 @@ export async function retreatExpedition(supabase: Admin, userId: string, expedit
       p_advance: false,
       p_event: { type: "retreat", position: exp.position },
       p_loot: [],
-      p_recruit: null,
+      p_recruit: null as never,
       p_finish: "retreated",
     }),
   );

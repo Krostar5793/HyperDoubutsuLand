@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import type { BattleState } from "@/lib/game/battle";
 import type { StepEvent } from "@/lib/game/explore";
-import { advanceAction, retreatAction } from "../actions";
+import { advanceAction, loadBattleAction, retreatAction } from "../actions";
+import { BattleView, type BattleItem } from "./BattleView";
 
 type LogEntry = StepEvent | { type: "retreat"; position: number };
 type Status = "exploring" | "cleared" | "failed" | "retreated";
@@ -11,6 +13,12 @@ type Names = {
   species: Record<number, string>;
   items: Record<number, string>;
   currencies: Record<string, string>;
+};
+type BattleSummary = {
+  outcome: "won" | "lost";
+  exp: { name: string; amount: number; levels: number }[];
+  recruited: string | null;
+  inStorage: boolean;
 };
 
 /** 1 マス進むまでの間隔（ミリ秒） */
@@ -34,12 +42,18 @@ function describe(e: LogEntry, names: Names): string {
           : `${e.gain.quantity.toLocaleString()} ${names.currencies[e.gain.currency_code] ?? e.gain.currency_code}`;
       return `${where} ${what} を手に入れた。`;
     }
+    case "battle_start": {
+      const enemies = e.enemies.map((x) => `${sp(x.species_id)} Lv${x.level}`).join("、");
+      return e.boss ? `ボス ${enemies} が立ちはだかる！` : `${enemies} が現れた！`;
+    }
+    case "battle_end": {
+      if (e.outcome === "lose") return "パーティは全滅してしまった…";
+      const join = e.recruited ? ` ${sp(e.recruited.species_id)} Lv${e.recruited.level} が仲間になった！` : "";
+      return `戦闘に勝利した。${join}`;
+    }
     case "battle": {
       const enemies = e.enemies.map((x) => `${sp(x.species_id)} Lv${x.level}`).join("、");
-      const head = e.boss ? `ボス ${enemies} が立ちはだかる！` : `${enemies} が現れた！`;
-      if (e.outcome === "lose") return `${head} …パーティは全滅してしまった。`;
-      const join = e.recruited ? ` ${sp(e.recruited.species_id)} Lv${e.recruited.level} が仲間になった！` : "";
-      return `${head} 戦闘に勝利した。${join}`;
+      return `${enemies} と戦った。（${e.outcome === "win" ? "勝利" : "敗北"}）`;
     }
   }
 }
@@ -50,6 +64,8 @@ export function ExpeditionRunner({
   clearAmount,
   totalSquares,
   initial,
+  initialBattle,
+  battleItems,
   names,
 }: {
   expeditionId: string;
@@ -57,42 +73,74 @@ export function ExpeditionRunner({
   clearAmount: number;
   totalSquares: number;
   initial: { status: Status; position: number; log: LogEntry[] };
+  initialBattle: { id: string; state: BattleState } | null;
+  battleItems: BattleItem[];
   names: Names;
 }) {
   const [status, setStatus] = useState<Status>(initial.status);
   const [position, setPosition] = useState(initial.position);
   const [log, setLog] = useState<LogEntry[]>(initial.log);
+  const [battle, setBattle] = useState(initialBattle);
+  const [summary, setSummary] = useState<BattleSummary | null>(null);
   const [paused, setPaused] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [notes, setNotes] = useState<string[]>([]);
   const logEnd = useRef<HTMLLIElement>(null);
 
-  // 自動で 1 マスずつ進める（ポーズ中・通信中・エラー時は止める）
+  // 自動で 1 マスずつ進める（ポーズ中・戦闘中・通信中・エラー時は止める）
   useEffect(() => {
-    if (status !== "exploring" || paused || busy || error) return;
+    if (status !== "exploring" || paused || busy || error || battle || summary) return;
     const timer = setTimeout(async () => {
       setBusy(true);
       const res = await advanceAction(expeditionId);
-      setBusy(false);
       if (res.error || !res.result) {
+        setBusy(false);
         setError(res.error ?? "通信に失敗しました");
         return;
       }
       const r = res.result;
       setLog((l) => [...l, r.event]);
       setPosition(r.position);
-      if (r.details.recruited_in_storage) {
-        setNotes((n) => [...n, "控えがいっぱいだったので、仲間は預り所に送られた。"]);
-      }
       if (r.finish) setStatus(r.finish);
+      if (r.battleId) {
+        const b = await loadBattleAction(r.battleId);
+        if (b.state) setBattle({ id: r.battleId, state: b.state });
+        else setError(b.error ?? "戦闘を読み込めませんでした");
+      }
+      setBusy(false);
     }, STEP_INTERVAL);
     return () => clearTimeout(timer);
-  }, [status, paused, busy, error, expeditionId]);
+  }, [status, paused, busy, error, battle, summary, expeditionId]);
 
   useEffect(() => {
     logEnd.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [log.length]);
+
+  const onBattleFinished = (details: Record<string, unknown>, state: BattleState) => {
+    const won = state.result === "won";
+    const recruit = details.recruit as { species_id: number; level: number } | null;
+    const levels = (details.levels_gained ?? {}) as Record<string, number>;
+    const exp = (details.exp ?? []) as { monster_id: string; amount: number }[];
+    const nameOf = (id: string) => state.fighters.find((f) => f.monsterId === id)?.name ?? "？";
+    setSummary({
+      outcome: won ? "won" : "lost",
+      exp: exp.map((e) => ({ name: nameOf(e.monster_id), amount: e.amount, levels: levels[e.monster_id] ?? 0 })),
+      recruited: recruit ? `${names.species[recruit.species_id] ?? "モンスター"} Lv${recruit.level}` : null,
+      inStorage: !!details.recruited_in_storage,
+    });
+    setLog((l) => [
+      ...l,
+      { type: "battle_end", position: position + 1, boss: state.boss, outcome: won ? "win" : "lose", recruited: recruit },
+    ]);
+    if (!won) setStatus("failed");
+    else if (state.boss) setStatus("cleared");
+    else setPosition((p) => p + 1);
+  };
+
+  const closeBattle = () => {
+    setSummary(null);
+    setBattle(null);
+  };
 
   const retreat = async () => {
     if (!confirm("引き返しますか？ここまでに拾ったものは持ち帰れますが、クリア報酬はもらえません。")) return;
@@ -109,16 +157,56 @@ export function ExpeditionRunner({
   const progress = totalSquares > 0 ? Math.min(position / totalSquares, 1) : 1;
   const atBoss = position >= totalSquares;
 
+  // 戦闘中
+  if (battle) {
+    return (
+      <div className="flex h-[590px] flex-col gap-2">
+        <div className="flex items-baseline justify-between">
+          <h1 className="text-xl font-bold">
+            {areaName} — {battle.state.boss ? "ボス戦" : "戦闘"}
+          </h1>
+        </div>
+        <div className="min-h-0 flex-1">
+          <BattleView battleId={battle.id} initial={battle.state} items={battleItems} onFinished={onBattleFinished} />
+        </div>
+        {summary && (
+          <div className="rounded-lg bg-black/5 p-3 text-sm dark:bg-white/10">
+            <p className="font-bold">{summary.outcome === "won" ? "戦闘に勝利した！" : "パーティは全滅してしまった…"}</p>
+            {summary.exp.length > 0 && (
+              <p>
+                {summary.exp
+                  .map((e) => `${e.name} +${e.amount.toLocaleString()} EXP${e.levels ? `（Lv が ${e.levels} 上がった！）` : ""}`)
+                  .join("　")}
+              </p>
+            )}
+            {summary.recruited && (
+              <p className="font-semibold text-emerald-700 dark:text-emerald-400">
+                {summary.recruited} が仲間になった！{summary.inStorage && "（控えがいっぱいなので預り所へ）"}
+              </p>
+            )}
+            <button onClick={closeBattle} className="mt-2 rounded-md bg-emerald-600 px-4 py-2 font-medium text-white">
+              {status === "exploring" ? "探索を続ける" : "結果を見る"}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-baseline justify-between gap-3">
         <h1 className="text-2xl font-bold">{areaName}</h1>
-        <span className="text-sm tabular-nums opacity-70">
-          {atBoss ? "ボス" : `${position} / ${totalSquares} マス`}
-        </span>
+        <span className="text-sm tabular-nums opacity-70">{atBoss ? "ボス" : `${position} / ${totalSquares} マス`}</span>
       </div>
 
-      <div className="h-3 overflow-hidden rounded-full bg-black/10 dark:bg-white/15" role="progressbar" aria-valuenow={Math.round(progress * 100)} aria-valuemin={0} aria-valuemax={100}>
+      <div
+        className="h-3 overflow-hidden rounded-full bg-black/10 dark:bg-white/15"
+        role="progressbar"
+        aria-valuenow={Math.round(progress * 100)}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
         <div className="h-full bg-emerald-500 transition-all" style={{ width: `${progress * 100}%` }} />
       </div>
 
@@ -127,14 +215,9 @@ export function ExpeditionRunner({
         {log.map((e, i) => (
           <li key={i} className="flex gap-2">
             <span className="w-14 shrink-0 text-xs tabular-nums opacity-50">
-              {e.type === "battle" && e.boss ? "ボス" : e.type === "retreat" ? "" : `${e.position} マス目`}
+              {"boss" in e && e.boss ? "ボス" : e.type === "retreat" || e.type === "battle_end" ? "" : `${e.position} マス目`}
             </span>
             <span>{describe(e, names)}</span>
-          </li>
-        ))}
-        {notes.map((n, i) => (
-          <li key={`n${i}`} className="text-amber-700 dark:text-amber-400">
-            {n}
           </li>
         ))}
         <li ref={logEnd} />

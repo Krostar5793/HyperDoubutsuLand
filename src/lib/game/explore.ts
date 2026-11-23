@@ -1,17 +1,16 @@
-import { resolveRecruit } from "./recruit";
-import type { RankTable } from "./ranks";
 
 /**
  * 探索の 1 マス分の抽選（サーバー側で使う。結果は commit_expedition_step で保存する）
  *
  *   ・position（進んだマス数）がマス数より少なければ、次のマスのイベントを抽選する
- *     - monster: 敵 1〜3 体と戦闘 → 勝てば仲間になる判定
+ *     - monster: 敵 1〜3 体との戦闘を始める（戦闘は battle.ts。勝てば次のマスへ）
  *     - item   : 落とし物（エリアの field 候補から 1 つ）
  *     - chest  : 宝箱（エリアの chest 候補から 1 つ）
  *     - choice : 選択イベント（※内容は未定。今は何も起きない扱い）
  *     - nothing: 何も起きない
  *   ・全マスを進んだらボス戦。勝てばクリア
  *   ・戦闘に負けたら全滅（探索で拾ったものは消える。仲間になったモンスターは残る）
+ *   ・戦闘の勝ち負け・仲間になる判定・経験値は、戦闘の終わりに battle-server.ts で処理する
  */
 
 export type SquareEvent = "monster" | "item" | "chest" | "choice" | "nothing";
@@ -63,40 +62,40 @@ export type LootGain =
   | { item_id: number; quantity: number }
   | { currency_code: string; quantity: number };
 
-export type BattleOutcome = "win" | "lose";
-
-/** 戦闘の判定。バトルの仕組みができるまでは常に勝ち */
-export type BattleResolver = (enemies: Enemy[]) => BattleOutcome;
-export const alwaysWin: BattleResolver = () => "win";
-
 export type StepEvent =
   | { type: "nothing" | "choice"; position: number }
   | { type: "loot"; source: "field" | "chest"; position: number; gain: LootGain | null }
+  /** 戦闘の開始 */
+  | { type: "battle_start"; position: number; boss: boolean; enemies: Enemy[] }
+  /** 戦闘の終わり */
+  | {
+      type: "battle_end";
+      position: number;
+      boss: boolean;
+      outcome: "win" | "lose";
+      recruited: { species_id: number; level: number } | null;
+    }
+  /** 以前の版の記録（戦闘を自動で勝ちにしていたころ）。表示のためだけに残す */
   | {
       type: "battle";
       position: number;
       boss: boolean;
       enemies: Enemy[];
-      outcome: BattleOutcome;
+      outcome: "win" | "lose";
       recruited: { species_id: number; level: number } | null;
     };
 
 export type StepPlan = {
-  /** マスを 1 つ進めるか（ボス戦では進めない） */
+  /** マスを 1 つ進めるか（戦闘は勝ってから進める） */
   advance: boolean;
   event: StepEvent;
   loot: LootGain[];
-  recruit: { species_id: number; level: number } | null;
-  finish: "cleared" | "failed" | null;
+  /** 戦闘が始まる場合の敵 */
+  encounter: { enemies: Enemy[]; boss: boolean } | null;
+  finish: "cleared" | null;
 };
 
 export type StepContext = {
-  /** プレイヤーが今持っている種族（仲間になる確率の判定用） */
-  ownedSpeciesIds: ReadonlySet<number>;
-  ranks?: RankTable;
-  /** 種族ごとのランク（仲間になる確率の判定用） */
-  speciesRanks: ReadonlyMap<number, string | null>;
-  battle?: BattleResolver;
   random?: () => number;
 };
 
@@ -165,41 +164,13 @@ export function rollLoot(
     : { currency_code: row.currency_code!, quantity };
 }
 
-function battle(
-  enemies: Enemy[],
-  position: number,
-  boss: boolean,
-  ctx: StepContext,
-  random: () => number,
-): StepPlan {
-  const outcome = (ctx.battle ?? alwaysWin)(enemies);
-  let recruited: { species_id: number; level: number } | null = null;
-
-  if (outcome === "win" && !boss) {
-    const result = resolveRecruit(
-      enemies.map((e) => ({
-        id: e.id,
-        speciesId: e.species_id,
-        rank: ctx.speciesRanks.get(e.species_id) ?? null,
-        level: e.level,
-        isBoss: e.isBoss,
-        // 戦闘中に使った専用アイテムの倍率は、バトルの仕組みができたらここに渡す
-        itemMultipliers: [],
-      })),
-      ctx.ownedSpeciesIds,
-      { ranks: ctx.ranks, random },
-    );
-    if (result.joined) {
-      recruited = { species_id: result.joined.speciesId, level: result.joined.level };
-    }
-  }
-
+function encounter(enemies: Enemy[], position: number, boss: boolean): StepPlan {
   return {
-    advance: !boss && outcome === "win",
-    event: { type: "battle", position, boss, enemies, outcome, recruited },
+    advance: false,
+    event: { type: "battle_start", position, boss, enemies },
     loot: [],
-    recruit: recruited,
-    finish: outcome === "lose" ? "failed" : boss ? "cleared" : null,
+    encounter: { enemies, boss },
+    finish: null,
   };
 }
 
@@ -207,7 +178,7 @@ function battle(
  * 次の 1 マス（またはボス戦）を抽選する
  * @param position 今までに進んだマス数
  */
-export function planStep(area: AreaConfig, position: number, ctx: StepContext): StepPlan {
+export function planStep(area: AreaConfig, position: number, ctx: StepContext = {}): StepPlan {
   const random = ctx.random ?? Math.random;
   const squares = [...area.squares].sort((a, b) => a.position - b.position);
 
@@ -222,11 +193,11 @@ export function planStep(area: AreaConfig, position: number, ctx: StepContext): 
         advance: false,
         event: { type: "nothing", position: squares.length + 1 },
         loot: [],
-        recruit: null,
+        encounter: null,
         finish: "cleared",
       };
     }
-    return battle(enemies, squares.length + 1, true, ctx, random);
+    return encounter(enemies, squares.length + 1, true);
   }
 
   const square = squares[position];
@@ -236,7 +207,7 @@ export function planStep(area: AreaConfig, position: number, ctx: StepContext): 
     case "monster": {
       const enemies = rollEnemies(area, random);
       if (enemies.length === 0) break; // 出現モンスターが未設定
-      return battle(enemies, square.position, false, ctx, random);
+      return encounter(enemies, square.position, false);
     }
     case "item":
     case "chest": {
@@ -246,7 +217,7 @@ export function planStep(area: AreaConfig, position: number, ctx: StepContext): 
         advance: true,
         event: { type: "loot", source, position: square.position, gain },
         loot: gain ? [gain] : [],
-        recruit: null,
+        encounter: null,
         finish: null,
       };
     }
@@ -255,7 +226,7 @@ export function planStep(area: AreaConfig, position: number, ctx: StepContext): 
         advance: true,
         event: { type: "choice", position: square.position },
         loot: [],
-        recruit: null,
+        encounter: null,
         finish: null,
       };
   }
@@ -264,7 +235,7 @@ export function planStep(area: AreaConfig, position: number, ctx: StepContext): 
     advance: true,
     event: { type: "nothing", position: square.position },
     loot: [],
-    recruit: null,
+    encounter: null,
     finish: null,
   };
 }

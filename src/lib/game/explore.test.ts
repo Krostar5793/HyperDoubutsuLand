@@ -32,11 +32,7 @@ const area: AreaConfig = {
   bosses: [{ slot: 1, species_id: 9, level: 20 }],
 };
 
-const ctx = (over: Partial<StepContext> = {}): StepContext => ({
-  ownedSpeciesIds: new Set(),
-  speciesRanks: new Map([[1, "E"], [2, "E"], [9, "SS"]]),
-  ...over,
-});
+const ctx = (over: Partial<StepContext> = {}): StepContext => ({ ...over });
 
 describe("rollSquareEvent", () => {
   const sq = area.squares[0];
@@ -81,16 +77,11 @@ describe("planStep", () => {
     expect(plan.event).toMatchObject({ type: "loot", source: "chest" });
   });
 
-  it("戦闘に勝って仲間になる。Lv60 の敵は Lv50 で仲間になる", () => {
-    // マス 0 → monster、数 0.99 → 3体、すべて 0.99 → 種族2 Lv60、仲間判定はすべて当たり
-    const plan = planStep(area, 0, ctx({ random: seq(0, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0, 0, 0, 0) }));
-    expect(plan.advance).toBe(true);
-    expect(plan.recruit).toEqual({ species_id: 2, level: 50 });
-  });
-
-  it("戦闘に負けたら全滅", () => {
-    const plan = planStep(area, 0, ctx({ random: () => 0, battle: () => "lose" }));
-    expect(plan).toMatchObject({ advance: false, finish: "failed", recruit: null });
+  it("モンスターのマスでは戦闘が始まる（マスは戦闘に勝ってから進む）", () => {
+    const plan = planStep(area, 0, ctx({ random: () => 0 }));
+    expect(plan.advance).toBe(false);
+    expect(plan.event).toMatchObject({ type: "battle_start", boss: false, position: 1 });
+    expect(plan.encounter?.enemies.length).toBeGreaterThan(0);
   });
 
   it("何も起きないマス", () => {
@@ -100,13 +91,9 @@ describe("planStep", () => {
     });
   });
 
-  it("全マスを進んだらボス戦。勝てばクリア、ボスは仲間にならない", () => {
+  it("全マスを進んだらボス戦", () => {
     const plan = planStep(area, 2, ctx({ random: () => 0 }));
-    expect(plan.event).toMatchObject({ type: "battle", boss: true, position: 3 });
-    expect(plan).toMatchObject({ advance: false, finish: "cleared", recruit: null });
-  });
-
-  it("ボスに負けたら全滅", () => {
-    expect(planStep(area, 2, ctx({ battle: () => "lose" })).finish).toBe("failed");
+    expect(plan.event).toMatchObject({ type: "battle_start", boss: true, position: 3 });
+    expect(plan.encounter).toMatchObject({ boss: true, enemies: [{ species_id: 9, level: 20, isBoss: true }] });
   });
 });
