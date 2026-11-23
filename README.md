@@ -186,8 +186,9 @@ cp .env.example .env.local
 
 | 変数 | 値の場所 |
 | --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Project Settings > Data API（または「Connect」ボタン）のプロジェクト URL |
+| `NEXT_PUBLIC_SUPABASE_URL` | プロジェクト URL。`https://<project-ref>.supabase.co` の形で、**末尾に `/rest/v1` などを付けない**（付けると「Invalid path specified in request URL」で失敗します） |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Project Settings > API Keys の **Publishable key**（`sb_publishable_...`）または旧形式の **anon key** |
+| `SUPABASE_SERVICE_ROLE_KEY` | Project Settings > API Keys の **Secret key**（`sb_secret_...`）。サーバー専用 |
 
 > `secret` / `service_role` キーは絶対に入れないでください（ブラウザに公開されます）。
 
