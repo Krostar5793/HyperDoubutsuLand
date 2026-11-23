@@ -24,12 +24,14 @@ supabase/
 
 ## ゲームデータの仕組み
 
-### モンスター図鑑（`monster_species`）
+### スキル（`Skills`）・モンスター図鑑（`Monster_Species`）
 - **データの入力**: ダッシュボードの Table Editor で行います。アプリからは読むことしかできません。
-- **画像**: Storage の `monster-images` バケット（公開）にアップロードし、そのファイルパス（例: `slime.png`）を `image_path` 列に入れます。
+- **画像**: Storage の `Images` バケット（公開）にアップロードし、そのファイルパス（例: `monsters/slime.png`）を `image_path` 列に入れます。
+- **スキルの指定**: `skill_1`〜`skill_5` には `Skills` の `id` を入れます（Table Editor ではプルダウンで選べます）。
+- **SQL で書くときの注意**: テーブル名に大文字が入っているので、`"Monster_Species"` のようにダブルクォートで囲みます（アプリの `supabase.from("Monster_Species")` ではそのままで OK）。
 - **列を増やすときの注意**: Table Editor ではなく、`supabase/migrations/` に SQL を追加して変更してください。
 
-### 所持モンスター（`player_monsters`）
+### 所持モンスター（`Player_Monsters`）
 | `party_slot` | 扱い |
 | --- | --- |
 | 1〜4 | バトルメンバー |
