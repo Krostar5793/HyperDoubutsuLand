@@ -103,7 +103,7 @@ supabase/
   - `withdraw_from_storage`: 預り所から控えへ引き取る（控えに空きが必要）
 
 **戦闘後に仲間になる判定**（`src/lib/game/recruit.ts` の `resolveRecruit`）
-- 確率は次のかけ算で決まります（上限 100%）。
+- 確率は次のかけ算で決まります（上限 100%）。専用アイテムは 1 ターンに 1 回だけ使えます。
   - ランクの確率（`Ranks.recruit_rate`: E 20% / D 10% / C 5% / B 2% / A 1% / S 0.5% / SS 0.1%）
   - 同じ種族を今持っていれば × 0.5
   - 戦闘中にそのモンスターへ使った専用アイテムの倍率（複数なら掛け合わせ）
@@ -120,6 +120,35 @@ supabase/
 
 - **渡す・消費する**: `grant_item` / `consume_item` を使います（サーバー側専用）。
 - **フィールドで使う**: プレイヤーが `supabase.rpc("use_field_item", { p_item_id })` を呼びます（`usable_in_field = true` のアイテムのみ）。
+
+### 通貨（`Currencies` / `Player_Currencies`）
+- 基本通貨は**ペリーカ（P）**です（`code = perica`）。通貨は `Currencies` に行を足せば増やせます。
+- 渡す・使うときは `grant_currency` / `spend_currency` を使います（サーバー側専用）。
+
+### 探索（`src/lib/game/explore.ts` / `expedition.ts`）
+**エリアの設定（Table Editor で入力）**
+
+| テーブル | 中身 |
+| --- | --- |
+| `Areas` | エリア。クリア報酬（通貨と額）、通常戦闘の敵の数（1〜3） |
+| `Area_Squares` | マス（1 から順番に）。各マスでモンスター・落とし物・宝箱・選択イベントが起こる確率（%）。合計 100 に満たない分は「何も起きない」 |
+| `Area_Encounters` | 出現するモンスター。重み（出やすさの比率）とレベルの範囲 |
+| `Area_Loot` | 落とし物（`source = field`）と宝箱（`source = chest`）の候補。アイテムか通貨のどちらか、重み、個数の範囲 |
+| `Area_Bosses` | ボス（最大 3 体）。仲間にはならない |
+
+**進み方**
+1. 全マスを進むとボス戦です。勝てばクリアで、拾ったものとクリア報酬を受け取ります。
+2. 途中で引き返すと、拾ったものは受け取れますが、クリア報酬はもらえません。
+3. 全滅すると、その探索で拾ったアイテム・通貨は消えます。仲間になったモンスターは残ります。
+
+**仕組み**
+- 抽選はすべてサーバーで行い、1 マスごとに `Expeditions`（進行状況と記録）へ保存します。
+- 同じマスを二重に処理しようとすると拒否されます。
+- 1 人が同時に進められる探索は 1 つだけです。
+- サーバーの処理には `.env.local` の `SUPABASE_SERVICE_ROLE_KEY` が必要です（Supabase の Project Settings > API Keys の secret key）。
+- **まだの部分**: 戦闘はバトルの仕組みができるまで常に勝ち扱いです。選択イベントは内容が決まるまで「何も起きない」扱いです。
+- **結合テスト**: ローカルの Supabase を起動して、次のように実行します。
+  `TEST_SUPABASE_URL=http://127.0.0.1:54321 TEST_SUPABASE_SERVICE_ROLE_KEY=<ローカルの service_role key> npx vitest run expedition.integration`
 
 ## 開発の始め方（クラウドの Supabase を使う）
 
