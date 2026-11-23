@@ -1,7 +1,7 @@
 /**
- * 育成（レベル・経験値・ステータス・マスターポイント）の計算。
+ * 育成（レベル・経験値・ステータス・リミットポイント（LP））の計算。
  *
- * ※ 同じ計算を DB 関数（grant_exp / allocate_master_point）でも行っている。
+ * ※ 同じ計算を DB 関数（grant_exp / allocate_limit_point）でも行っている。
  *   ここの定数や式を変えるときは、マイグレーションの SQL も合わせて変えること。
  */
 
@@ -24,27 +24,36 @@ export const GROWTH = {
   baseExp: 50,
   /** レベルごとの必要経験値の増加率（1.1 = 毎レベル1割増） */
   expGrowth: 1.1,
-  /** 1レベルごとに、図鑑の初期値の何割が加算されるか（HP 以外） */
-  statGrowthRate: 0.1,
-  /** HP の成長率 */
-  hpGrowthRate: 0.05,
+  /**
+   * 1レベル上がるごとに増える量 = flat + 図鑑の初期値 × rate
+   * Lv50 の目安: HP 初期値10〜50 → 約500〜1000 / MP 10〜50 → 100〜500 /
+   *             その他 5〜30 → 約200〜500（atk〜spd の合計は 588 + 初期値合計 × 11.8）
+   */
+  statGrowth: {
+    hp: { flat: 8, rate: 0.23 },
+    mp: { flat: 0, rate: 0.184 },
+    atk: { flat: 3, rate: 0.22 },
+    def: { flat: 3, rate: 0.22 },
+    int: { flat: 3, rate: 0.22 },
+    spd: { flat: 3, rate: 0.22 },
+  },
   /** 基礎ステータスの成長が止まるレベル */
   growthStopLevel: 50,
-  /** 成長が止まった後、1レベルごとに得られるマスターポイント */
-  masterPointsPerLevel: 5,
-  /** マスターポイントを振るときの最初の消費量 */
+  /** 成長が止まった後、1レベルごとに得られる LP */
+  limitPointsPerLevel: 5,
+  /** LP を振るときの最初の消費量 */
   allocationBaseCost: 5,
   /** 何回振るごとに消費量が増えるか */
   allocationCostStepEvery: 10,
   /** 消費量の増え幅 */
   allocationCostStep: 5,
   /** 1回振ったときの上昇量 */
-  allocationGain: { hp: 10, atk: 1, def: 1, int: 1, spd: 1 },
+  allocationGain: { hp: 10, mp: 5, atk: 1, def: 1, int: 1, spd: 1 },
   /** 標準のレベル上限 */
   defaultLevelCap: 99,
 } as const;
 
-export const STATS = ["hp", "atk", "def", "int", "spd"] as const;
+export const STATS = ["hp", "mp", "atk", "def", "int", "spd"] as const;
 export type Stat = (typeof STATS)[number];
 export type Stats = Record<Stat, number>;
 
@@ -59,8 +68,8 @@ export type MonsterGrowthData = {
   /** 現在のレベルで貯まっている経験値（レベルアップで 0 から数え直す） */
   exp: number;
   level_cap: number;
-  master_points: number;
-} & Record<`mp_${Stat}`, number>;
+  limit_points: number;
+} & Record<`alloc_${Stat}`, number>;
 
 export function rankRate(rank: string | null): number {
   if (rank === null || !(rank in RANK_EXP_RATE)) {
@@ -76,25 +85,25 @@ export function expToNext(level: number, rank: string | null): number {
   );
 }
 
-/** 指定レベルのステータス（マスターポイント分を含む） */
+/** 指定レベルのステータス（LP を振った分を含む） */
 export function statsAt(
   species: SpeciesGrowthData,
-  monster: Pick<MonsterGrowthData, "level"> & Record<`mp_${Stat}`, number>,
+  monster: Pick<MonsterGrowthData, "level"> & Record<`alloc_${Stat}`, number>,
 ): Stats {
   const grownLevels = Math.min(monster.level, GROWTH.growthStopLevel) - 1;
   const result = {} as Stats;
   for (const stat of STATS) {
     const base = species[stat] ?? 0;
-    const rate = stat === "hp" ? GROWTH.hpGrowthRate : GROWTH.statGrowthRate;
-    // 切り捨ては最後に 1 回だけ（初期値が小さくても伸びるように）
-    const growth = Math.floor(base * rate * grownLevels);
-    const bonus = monster[`mp_${stat}`] * GROWTH.allocationGain[stat];
+    const { flat, rate } = GROWTH.statGrowth[stat];
+    // 1レベルごとの増加量 × 上がったレベル数。切り捨ては最後に 1 回
+    const growth = Math.floor((flat + base * rate) * grownLevels);
+    const bonus = monster[`alloc_${stat}`] * GROWTH.allocationGain[stat];
     result[stat] = base + growth + bonus;
   }
   return result;
 }
 
-/** そのステータスに次の 1 回を振るのに必要なマスターポイント */
+/** そのステータスに次の 1 回を振るのに必要な LP */
 export function allocationCost(timesAllocated: number): number {
   return (
     GROWTH.allocationBaseCost +
@@ -103,15 +112,15 @@ export function allocationCost(timesAllocated: number): number {
   );
 }
 
-/** このレベルに上がったときに得られるマスターポイント */
-export function masterPointsForReaching(level: number): number {
-  return level > GROWTH.growthStopLevel ? GROWTH.masterPointsPerLevel : 0;
+/** このレベルに上がったときに得られる LP */
+export function limitPointsForReaching(level: number): number {
+  return level > GROWTH.growthStopLevel ? GROWTH.limitPointsPerLevel : 0;
 }
 
 export type ExpGainResult = {
   level: number;
   exp: number;
-  master_points: number;
+  limit_points: number;
   levelsGained: number;
   /** 上限に達して捨てられた経験値 */
   overflow: number;
@@ -121,11 +130,11 @@ export type ExpGainResult = {
  * 経験値を加える。上限レベルに達したら、それ以上の経験値は捨てる。
  */
 export function gainExp(
-  monster: Pick<MonsterGrowthData, "level" | "exp" | "level_cap" | "master_points">,
+  monster: Pick<MonsterGrowthData, "level" | "exp" | "level_cap" | "limit_points">,
   rank: string | null,
   amount: number,
 ): ExpGainResult {
-  let { level, exp, master_points } = monster;
+  let { level, exp, limit_points } = monster;
   let rest = exp + amount;
   let levelsGained = 0;
 
@@ -135,7 +144,7 @@ export function gainExp(
     rest -= need;
     level += 1;
     levelsGained += 1;
-    master_points += masterPointsForReaching(level);
+    limit_points += limitPointsForReaching(level);
   }
 
   let overflow = 0;
@@ -144,5 +153,5 @@ export function gainExp(
     rest = 0;
   }
   exp = rest;
-  return { level, exp, master_points, levelsGained, overflow };
+  return { level, exp, limit_points, levelsGained, overflow };
 }
