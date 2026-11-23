@@ -37,6 +37,11 @@ describe("statsAt", () => {
     const high = statsAt(sp({ hp: 50, mp: 50, atk: 30, def: 30, int: 30, spd: 30 }), { level: 50, ...noAlloc });
     expect(high).toEqual({ hp: 1005, mp: 500, atk: 500, def: 500, int: 500, spd: 500 });
   });
+  it("序盤はなだらかに伸びる（Lv2 で 1.3 倍以下）", () => {
+    const lv1 = statsAt(sp(), { level: 1, ...noAlloc });
+    const lv2 = statsAt(sp(), { level: 2, ...noAlloc });
+    for (const k of ["hp", "mp", "atk"] as const) expect(lv2[k] / lv1[k]).toBeLessThanOrEqual(1.3);
+  });
   it("初期値が小さくても毎レベル伸びる", () => {
     let prev = statsAt(sp(), { level: 1, ...noAlloc });
     for (let level = 2; level <= 50; level++) {

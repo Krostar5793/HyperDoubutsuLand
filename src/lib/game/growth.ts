@@ -15,7 +15,7 @@ export const GROWTH = {
   /** レベルごとの必要経験値の増加率（1.1 = 毎レベル1割増） */
   expGrowth: 1.1,
   /**
-   * 1レベル上がるごとに増える量 = flat + 図鑑の初期値 × rate
+   * Lv50 までに増える量 = (flat + 図鑑の初期値 × rate) × 49。途中の伸び方は curveExponent で決まる
    * Lv50 の目安: HP 初期値10〜50 → 約500〜1000 / MP 10〜50 → 100〜500 /
    *             その他 5〜30 → 約200〜500（atk〜spd の合計は 588 + 初期値合計 × 11.8）
    */
@@ -27,6 +27,14 @@ export const GROWTH = {
     int: { flat: 3, rate: 0.22 },
     spd: { flat: 3, rate: 0.22 },
   },
+  /**
+   * 成長カーブの指数。Lv50 までの成長量（上の flat + rate × 49 レベル分）を、
+   * (上がったレベル数 / 49) ^ curveExponent の割合で配分する。
+   * 1 なら毎レベル同じだけ伸びる。1 より大きいほど序盤の伸びがなだらかになり、Lv50 の値は変わらない
+   */
+  curveExponent: 1.3,
+  /** 1 レベルごとに必ず伸びる最低量（序盤に伸びないレベルができないように） */
+  minGrowthPerLevel: 1,
   /** 基礎ステータスの成長が止まるレベル */
   growthStopLevel: 50,
   /** 成長が止まった後、1レベルごとに得られる LP */
@@ -82,8 +90,11 @@ export function statsAt(
   for (const stat of STATS) {
     const base = species[stat] ?? 0;
     const { flat, rate } = GROWTH.statGrowth[stat];
-    // 1レベルごとの増加量 × 上がったレベル数。切り捨ては最後に 1 回
-    const growth = Math.floor((flat + base * rate) * grownLevels);
+    // Lv50 までの成長量を、カーブに沿って配分する。切り捨ては最後に 1 回
+    const span = GROWTH.growthStopLevel - 1;
+    const total = (flat + base * rate) * span;
+    const curved = Math.floor(total * Math.pow(grownLevels / span, GROWTH.curveExponent));
+    const growth = Math.max(curved, GROWTH.minGrowthPerLevel * grownLevels);
     const bonus = monster[`alloc_${stat}`] * GROWTH.allocationGain[stat];
     result[stat] = base + growth + bonus;
   }
