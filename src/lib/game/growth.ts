@@ -80,11 +80,32 @@ export function expToNext(
   );
 }
 
-/** 指定レベルのステータス（LP を振った分を含む） */
+/** 合成で付くボーナス。DB では jsonb（{ "atk": 0.2 } など）で持つ */
+export type StatBonusMap = Partial<Record<Stat, number>>;
+
+/** DB の jsonb を StatBonusMap として読む（不正な値は無視） */
+export function toBonusMap(value: unknown): StatBonusMap {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const result: StatBonusMap = {};
+  for (const stat of STATS) {
+    const v = Number((value as Record<string, unknown>)[stat]);
+    if (Number.isFinite(v) && v !== 0) result[stat] = v;
+  }
+  return result;
+}
+
+/**
+ * 指定レベルのステータス（LP を振った分・合成のボーナスを含む）
+ *   growth_bonus: Lv50 までの成長量を何割増やすか（0.2 なら 2 割増）
+ *   stat_bonus  : ステータスに足す値
+ */
 export function statsAt(
   species: SpeciesGrowthData,
-  monster: Pick<MonsterGrowthData, "level"> & Record<`alloc_${Stat}`, number>,
+  monster: Pick<MonsterGrowthData, "level"> &
+    Record<`alloc_${Stat}`, number> & { growth_bonus?: unknown; stat_bonus?: unknown },
 ): Stats {
+  const growthBonus = toBonusMap(monster.growth_bonus);
+  const statBonus = toBonusMap(monster.stat_bonus);
   const grownLevels = Math.min(monster.level, GROWTH.growthStopLevel) - 1;
   const result = {} as Stats;
   for (const stat of STATS) {
@@ -92,10 +113,10 @@ export function statsAt(
     const { flat, rate } = GROWTH.statGrowth[stat];
     // Lv50 までの成長量を、カーブに沿って配分する。切り捨ては最後に 1 回
     const span = GROWTH.growthStopLevel - 1;
-    const total = (flat + base * rate) * span;
+    const total = (flat + base * rate) * span * (1 + (growthBonus[stat] ?? 0));
     const curved = Math.floor(total * Math.pow(grownLevels / span, GROWTH.curveExponent));
     const growth = Math.max(curved, GROWTH.minGrowthPerLevel * grownLevels);
-    const bonus = monster[`alloc_${stat}`] * GROWTH.allocationGain[stat];
+    const bonus = monster[`alloc_${stat}`] * GROWTH.allocationGain[stat] + Math.floor(statBonus[stat] ?? 0);
     result[stat] = base + growth + bonus;
   }
   return result;

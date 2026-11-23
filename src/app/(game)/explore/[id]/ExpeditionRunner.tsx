@@ -7,6 +7,8 @@ import type { StepEvent } from "@/lib/game/explore";
 import { GuideModal, type Guide } from "@/components/GuideModal";
 import { StarterPicker, type StarterOption } from "@/components/StarterPicker";
 import { chooseStarterAction } from "../../welcome/actions";
+import { loadBoardAction } from "../../monsters/actions";
+import { MonsterBoard, type BoardMonster } from "../../monsters/MonsterBoard";
 import { advanceAction, loadBattleAction, retreatAction } from "../actions";
 import { BattleView, type BattleItem } from "./BattleView";
 
@@ -95,6 +97,9 @@ export function ExpeditionRunner({
     if (next.length) setGuideQueue((q) => [...q, ...next.map((k) => tutorial.guides[k])]);
   };
   const [needStarter, setNeedStarter] = useState(false);
+  // ポーズ中の編成パネル
+  const [board, setBoard] = useState<{ monsters: BoardMonster[]; boxCapacity: number } | null>(null);
+  const openBoard = async () => setBoard(await loadBoardAction());
   const [status, setStatus] = useState<Status>(initial.status);
   const [position, setPosition] = useState(initial.position);
   const [log, setLog] = useState<LogEntry[]>(initial.log);
@@ -294,14 +299,31 @@ export function ExpeditionRunner({
       )}
 
       {guideModal}
+      {board && status === "exploring" && paused && (
+        <div className="max-h-[360px] overflow-y-auto rounded-xl border border-emerald-500 p-3">
+          <p className="mb-2 text-sm opacity-70">探索中は、編成の入れ替えとリリースができます。次の戦闘からこの編成で戦います。</p>
+          <MonsterBoard monsters={board.monsters} boxCapacity={board.boxCapacity} embedded onChanged={openBoard} />
+        </div>
+      )}
       {status === "exploring" ? (
         <div className="flex gap-2">
           <button
-            onClick={() => setPaused((p) => !p)}
+            onClick={() => {
+              setPaused((p) => !p);
+              setBoard(null);
+            }}
             className="flex-1 rounded-md bg-emerald-600 px-4 py-3 font-medium text-white hover:bg-emerald-700"
           >
             {paused ? "再開" : "ポーズ"}
           </button>
+          {paused && (
+            <button
+              onClick={() => (board ? setBoard(null) : openBoard())}
+              className="flex-1 rounded-md border border-emerald-600 px-4 py-3 font-medium text-emerald-700 dark:text-emerald-400"
+            >
+              {board ? "編成を閉じる" : "編成"}
+            </button>
+          )}
           {paused && !tutorial && (
             <button
               disabled={busy}

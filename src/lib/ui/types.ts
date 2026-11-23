@@ -15,6 +15,7 @@ export const WIDGETS = {
   expedition_runner: "探索の進行",
   item_list: "所持品",
   help: "ヘルプ",
+  fusion_lab: "合成",
 } as const;
 export type WidgetKind = keyof typeof WIDGETS;
 
@@ -26,6 +27,7 @@ export const SCREENS = {
   explore: { name: "探索（エリア選択）", path: "/explore", main: "area_list" },
   explore_run: { name: "探索中", path: null, main: "expedition_runner" },
   items: { name: "アイテム", path: "/items", main: "item_list" },
+  fusion: { name: "合成", path: "/fusion", main: "fusion_lab" },
   help: { name: "ヘルプ", path: "/help", main: "help" },
 } as const satisfies Record<string, { name: string; path: string | null; main: WidgetKind }>;
 export type ScreenKey = keyof typeof SCREENS;
@@ -78,6 +80,7 @@ const NAV: { label: string; to: string }[] = [
   { label: "モンスター", to: "/monsters" },
   { label: "探索", to: "/explore" },
   { label: "アイテム", to: "/items" },
+  { label: "合成", to: "/fusion" },
   { label: "ヘルプ", to: "/help" },
 ];
 

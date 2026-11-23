@@ -285,6 +285,38 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"Fusion_Recipes": {
+                  Row: {
+                    "child_species_id": number,"id": number,"note": string | null,"parent_a_species_id": number,"parent_b_species_id": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "child_species_id": number,"id"?: number,"note"?: string | null,"parent_a_species_id": number,"parent_b_species_id": number
+                  }
+                  Update: {
+                    "child_species_id"?: number,"id"?: number,"note"?: string | null,"parent_a_species_id"?: number,"parent_b_species_id"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "Fusion_Recipes_child_species_id_fkey"
+      columns: ["child_species_id"]
+isOneToOne: false
+      referencedRelation: "Monster_Species"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "Fusion_Recipes_parent_a_species_id_fkey"
+      columns: ["parent_a_species_id"]
+isOneToOne: false
+      referencedRelation: "Monster_Species"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "Fusion_Recipes_parent_b_species_id_fkey"
+      columns: ["parent_b_species_id"]
+isOneToOne: false
+      referencedRelation: "Monster_Species"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"Guide_Pages": {
                   Row: {
                     "body": string,"key": string,"show_in_help": boolean,"sort_order": number,"title": string
@@ -341,14 +373,14 @@ isOneToOne: false
                   ]
                 },"Monster_Species": {
                   Row: {
-                    "atk": number | null,"def": number | null,"description": string | null,"element_id": number | null,"exp_multiplier": number,"hp": number | null,"id": number,"image_path": string | null,"int": number | null,"mp": number | null,"name": string,"rank": string | null,"size": number | null,"spd": number | null
+                    "atk": number | null,"def": number | null,"description": string | null,"element_id": number | null,"exp_multiplier": number,"fusion_selectable": boolean,"hp": number | null,"id": number,"image_path": string | null,"int": number | null,"mp": number | null,"name": string,"rank": string | null,"size": number | null,"spd": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "atk"?: number | null,"def"?: number | null,"description"?: string | null,"element_id"?: number | null,"exp_multiplier"?: number,"hp"?: number | null,"id"?: number,"image_path"?: string | null,"int"?: number | null,"mp"?: number | null,"name": string,"rank"?: string | null,"size"?: number | null,"spd"?: number | null
+                    "atk"?: number | null,"def"?: number | null,"description"?: string | null,"element_id"?: number | null,"exp_multiplier"?: number,"fusion_selectable"?: boolean,"hp"?: number | null,"id"?: number,"image_path"?: string | null,"int"?: number | null,"mp"?: number | null,"name": string,"rank"?: string | null,"size"?: number | null,"spd"?: number | null
                   }
                   Update: {
-                    "atk"?: number | null,"def"?: number | null,"description"?: string | null,"element_id"?: number | null,"exp_multiplier"?: number,"hp"?: number | null,"id"?: number,"image_path"?: string | null,"int"?: number | null,"mp"?: number | null,"name"?: string,"rank"?: string | null,"size"?: number | null,"spd"?: number | null
+                    "atk"?: number | null,"def"?: number | null,"description"?: string | null,"element_id"?: number | null,"exp_multiplier"?: number,"fusion_selectable"?: boolean,"hp"?: number | null,"id"?: number,"image_path"?: string | null,"int"?: number | null,"mp"?: number | null,"name"?: string,"rank"?: string | null,"size"?: number | null,"spd"?: number | null
                   }
                   Relationships: [
                     {
@@ -407,14 +439,14 @@ isOneToOne: false
                   ]
                 },"Player_Monsters": {
                   Row: {
-                    "alloc_atk": number,"alloc_def": number,"alloc_hp": number,"alloc_int": number,"alloc_mp": number,"alloc_spd": number,"exp": number,"id": string,"in_storage": boolean,"level": number,"level_cap": number,"limit_points": number,"nickname": string | null,"obtained_at": string,"owner_id": string,"party_slot": number | null,"source": string | null,"species_id": number
+                    "alloc_atk": number,"alloc_def": number,"alloc_hp": number,"alloc_int": number,"alloc_mp": number,"alloc_spd": number,"exp": number,"growth_bonus": NonNullable<Json>,"id": string,"in_storage": boolean,"level": number,"level_cap": number,"limit_points": number,"nickname": string | null,"obtained_at": string,"owner_id": string,"party_slot": number | null,"source": string | null,"species_id": number,"stat_bonus": NonNullable<Json>
                   }
                   ComputedFields: never
                   Insert: {
-                    "alloc_atk"?: number,"alloc_def"?: number,"alloc_hp"?: number,"alloc_int"?: number,"alloc_mp"?: number,"alloc_spd"?: number,"exp"?: number,"id"?: string,"in_storage"?: boolean,"level"?: number,"level_cap"?: number,"limit_points"?: number,"nickname"?: string | null,"obtained_at"?: string,"owner_id": string,"party_slot"?: number | null,"source"?: string | null,"species_id": number
+                    "alloc_atk"?: number,"alloc_def"?: number,"alloc_hp"?: number,"alloc_int"?: number,"alloc_mp"?: number,"alloc_spd"?: number,"exp"?: number,"growth_bonus"?: NonNullable<Json>,"id"?: string,"in_storage"?: boolean,"level"?: number,"level_cap"?: number,"limit_points"?: number,"nickname"?: string | null,"obtained_at"?: string,"owner_id": string,"party_slot"?: number | null,"source"?: string | null,"species_id": number,"stat_bonus"?: NonNullable<Json>
                   }
                   Update: {
-                    "alloc_atk"?: number,"alloc_def"?: number,"alloc_hp"?: number,"alloc_int"?: number,"alloc_mp"?: number,"alloc_spd"?: number,"exp"?: number,"id"?: string,"in_storage"?: boolean,"level"?: number,"level_cap"?: number,"limit_points"?: number,"nickname"?: string | null,"obtained_at"?: string,"owner_id"?: string,"party_slot"?: number | null,"source"?: string | null,"species_id"?: number
+                    "alloc_atk"?: number,"alloc_def"?: number,"alloc_hp"?: number,"alloc_int"?: number,"alloc_mp"?: number,"alloc_spd"?: number,"exp"?: number,"growth_bonus"?: NonNullable<Json>,"id"?: string,"in_storage"?: boolean,"level"?: number,"level_cap"?: number,"limit_points"?: number,"nickname"?: string | null,"obtained_at"?: string,"owner_id"?: string,"party_slot"?: number | null,"source"?: string | null,"species_id"?: number,"stat_bonus"?: NonNullable<Json>
                   }
                   Relationships: [
                     {
@@ -441,17 +473,23 @@ isOneToOne: false
                   ]
                 },"Ranks": {
                   Row: {
-                    "code": string,"exp_rate": number,"recruit_rate": number,"sort_order": number
+                    "code": string,"exp_rate": number,"fusion_item_id": number | null,"fusion_item_quantity": number,"fusion_rankup_level_sum": number | null,"recruit_rate": number,"sort_order": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "code": string,"exp_rate": number,"recruit_rate": number,"sort_order"?: number
+                    "code": string,"exp_rate": number,"fusion_item_id"?: number | null,"fusion_item_quantity"?: number,"fusion_rankup_level_sum"?: number | null,"recruit_rate": number,"sort_order"?: number
                   }
                   Update: {
-                    "code"?: string,"exp_rate"?: number,"recruit_rate"?: number,"sort_order"?: number
+                    "code"?: string,"exp_rate"?: number,"fusion_item_id"?: number | null,"fusion_item_quantity"?: number,"fusion_rankup_level_sum"?: number | null,"recruit_rate"?: number,"sort_order"?: number
                   }
                   Relationships: [
-                    
+                    {
+      foreignKeyName: "Ranks_fusion_item_id_fkey"
+      columns: ["fusion_item_id"]
+isOneToOne: false
+      referencedRelation: "Items"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"Resistance_Levels": {
                   Row: {
@@ -509,14 +547,14 @@ isOneToOne: false
                   ]
                 },"Skills": {
                   Row: {
-                    "accuracy": number,"attack_stat": string,"category": string,"defense_stat": string,"description": string | null,"element_id": number | null,"id": number,"mp_cost": number,"name": string | null,"power": number,"target": string
+                    "accuracy": number,"attack_stat": string,"category": string,"defense_stat": string,"description": string | null,"element_id": number | null,"id": number,"mp_cost": number,"name": string | null,"power": number,"slot_cost": number,"target": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "accuracy"?: number,"attack_stat"?: string,"category"?: string,"defense_stat"?: string,"description"?: string | null,"element_id"?: number | null,"id"?: number,"mp_cost"?: number,"name"?: string | null,"power"?: number,"target"?: string
+                    "accuracy"?: number,"attack_stat"?: string,"category"?: string,"defense_stat"?: string,"description"?: string | null,"element_id"?: number | null,"id"?: number,"mp_cost"?: number,"name"?: string | null,"power"?: number,"slot_cost"?: number,"target"?: string
                   }
                   Update: {
-                    "accuracy"?: number,"attack_stat"?: string,"category"?: string,"defense_stat"?: string,"description"?: string | null,"element_id"?: number | null,"id"?: number,"mp_cost"?: number,"name"?: string | null,"power"?: number,"target"?: string
+                    "accuracy"?: number,"attack_stat"?: string,"category"?: string,"defense_stat"?: string,"description"?: string | null,"element_id"?: number | null,"id"?: number,"mp_cost"?: number,"name"?: string | null,"power"?: number,"slot_cost"?: number,"target"?: string
                   }
                   Relationships: [
                     {
@@ -694,6 +732,9 @@ isOneToOne: false
             "allocate_limit_point":
 { Args: { "p_monster_id": string,"p_stat": string }; Returns: number
                            },
+"assert_not_exploring":
+{ Args: { "p_owner_id": string }; Returns: undefined
+                           },
 "begin_expedition_battle":
 { Args: { "p_event": Json,"p_expected_position": number,"p_expedition_id": string,"p_state": Json }; Returns: string
                            },
@@ -711,6 +752,11 @@ isOneToOne: false
                            },
 "exp_to_next":
 { Args: { "p_level": number,"p_rank": string }; Returns: number
+                           },
+"fuse_monsters":
+{ Args: { "p_child_species_id": number,"p_growth_bonus": Json,"p_item_id"?: number,"p_item_quantity"?: number,"p_owner_id": string,"p_parent_a": string,"p_parent_b": string,"p_skill_ids": (number)[],"p_stat_bonus": Json }; Returns: {
+              "in_storage": boolean,"monster_id": string
+            }[]
                            },
 "grant_currency":
 { Args: { "p_amount": number,"p_currency_code": string,"p_owner_id": string }; Returns: number

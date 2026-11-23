@@ -24,11 +24,21 @@ export async function GameScreen({ screen, main }: { screen: ScreenKey; main: Re
   if (error) throw new Error(`プロフィールを読み込めませんでした: ${error.message}`);
   if (!p) throw new Error("プロフィールが見つかりません。ログインし直してください");
   if (p.tutorial_state === "pending") redirect("/welcome");
-  if (p.tutorial_state === "in_progress" && screen !== "explore_run") {
-    const exp = await activeTutorialExpedition(createAdminClient(), user.id);
-    if (exp) redirect(`/explore/${exp}`);
+  if (screen !== "explore_run") {
+    if (p.tutorial_state === "in_progress") {
+      const exp = await activeTutorialExpedition(createAdminClient(), user.id);
+      if (exp) redirect(`/explore/${exp}`);
+    }
+    if (!p.starter_chosen) redirect("/welcome/starter");
+    // 探索中は、探索の画面（編成の入れ替え・リリースもそこでできる）から離れられない
+    const { data: active } = await supabase
+      .from("Expeditions")
+      .select("id")
+      .eq("owner_id", user.id)
+      .eq("status", "exploring")
+      .maybeSingle();
+    if (active) redirect(`/explore/${active.id}`);
   }
-  if (!p.starter_chosen && screen !== "explore_run") redirect("/welcome/starter");
 
   const layout = await loadScreenLayout(supabase, screen);
   const widgets: WidgetMap = {

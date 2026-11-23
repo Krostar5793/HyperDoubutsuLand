@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { MonsterImage } from "@/components/MonsterImage";
 import { BATTLE_SLOTS, STANDBY_SLOTS } from "@/lib/game/party";
-import { moveMonsterAction, withdrawAction } from "./actions";
+import { moveMonsterAction, releaseMonsterAction, withdrawAction } from "./actions";
 
 export type BoardMonster = {
   id: string;
@@ -20,7 +20,19 @@ export type BoardMonster = {
 /**
  * 編成画面。モンスターを選んでから、移動先（枠・控え）を押すと移動・入れ替えする。
  */
-export function MonsterBoard({ monsters, boxCapacity }: { monsters: BoardMonster[]; boxCapacity: number }) {
+export function MonsterBoard({
+  monsters,
+  boxCapacity,
+  embedded = false,
+  onChanged,
+}: {
+  monsters: BoardMonster[];
+  boxCapacity: number;
+  /** 探索中の編成パネルとして使う（詳細画面へのリンクを出さず、リリースをここで行う） */
+  embedded?: boolean;
+  /** 変更があったとき（埋め込み時に一覧を読み直すため） */
+  onChanged?: () => void;
+}) {
   const [selected, setSelected] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -35,7 +47,10 @@ export function MonsterBoard({ monsters, boxCapacity }: { monsters: BoardMonster
     startTransition(async () => {
       const res = await fn();
       if (res.error) setError(res.error);
-      else setSelected(null);
+      else {
+        setSelected(null);
+        onChanged?.();
+      }
     });
   };
 
@@ -60,9 +75,22 @@ export function MonsterBoard({ monsters, boxCapacity }: { monsters: BoardMonster
               控えへ戻す
             </button>
           )}
-          <Link href={`/monsters/${selectedMonster.id}`} className="rounded bg-white/20 px-2 py-1">
-            詳細
-          </Link>
+          {embedded ? (
+            <button
+              onClick={() => {
+                if (confirm(`${selectedMonster.name} をリリースします。元に戻せません。よろしいですか？`)) {
+                  run(() => releaseMonsterAction(selectedMonster.id));
+                }
+              }}
+              className="rounded bg-red-500/80 px-2 py-1"
+            >
+              リリース
+            </button>
+          ) : (
+            <Link href={`/monsters/${selectedMonster.id}`} className="rounded bg-white/20 px-2 py-1">
+              詳細
+            </Link>
+          )}
           <button onClick={() => setSelected(null)} className="ml-auto rounded bg-white/20 px-2 py-1">
             やめる
           </button>
@@ -155,11 +183,24 @@ export function MonsterBoard({ monsters, boxCapacity }: { monsters: BoardMonster
               <li key={m.id} className="flex items-center gap-2 rounded-xl border border-black/10 p-2 dark:border-white/15">
                 <MonsterImage imagePath={m.imagePath} name={m.speciesName} size={40} />
                 <span className="min-w-0 flex-1">
-                  <Link href={`/monsters/${m.id}`} className="block truncate font-semibold underline">
-                    {m.name}
-                  </Link>
+                  {embedded ? (
+                    <span className="block truncate font-semibold">{m.name}</span>
+                  ) : (
+                    <Link href={`/monsters/${m.id}`} className="block truncate font-semibold underline">
+                      {m.name}
+                    </Link>
+                  )}
                   <span className="block text-xs opacity-70">Lv{m.level}</span>
                 </span>
+                {embedded && (
+                  <button
+                    disabled={pending}
+                    onClick={() => confirm(`${m.name} をリリースします。よろしいですか？`) && run(() => releaseMonsterAction(m.id))}
+                    className="rounded border border-red-500 px-2 py-1 text-xs text-red-600"
+                  >
+                    リリース
+                  </button>
+                )}
                 <button
                   disabled={pending}
                   onClick={() => run(() => withdrawAction(m.id))}
