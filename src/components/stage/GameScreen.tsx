@@ -15,13 +15,20 @@ export async function GameScreen({ screen, main }: { screen: ScreenKey; main: Re
   const { supabase, user } = await requireUser();
 
   // チュートリアルが終わっていなければ、そちらへ案内する
-  const { data: p } = await supabase.from("profiles").select("tutorial_state, starter_chosen").eq("id", user.id).maybeSingle();
-  if (p?.tutorial_state === "pending") redirect("/welcome");
-  if (p?.tutorial_state === "in_progress" && screen !== "explore_run") {
+  const { data: p, error } = await supabase
+    .from("profiles")
+    .select("tutorial_state, starter_chosen")
+    .eq("id", user.id)
+    .maybeSingle();
+  // 読み込めないときに黙って先へ進まないよう、原因を表示する
+  if (error) throw new Error(`プロフィールを読み込めませんでした: ${error.message}`);
+  if (!p) throw new Error("プロフィールが見つかりません。ログインし直してください");
+  if (p.tutorial_state === "pending") redirect("/welcome");
+  if (p.tutorial_state === "in_progress" && screen !== "explore_run") {
     const exp = await activeTutorialExpedition(createAdminClient(), user.id);
     if (exp) redirect(`/explore/${exp}`);
   }
-  if (p && !p.starter_chosen && screen !== "explore_run") redirect("/welcome/starter");
+  if (!p.starter_chosen && screen !== "explore_run") redirect("/welcome/starter");
 
   const layout = await loadScreenLayout(supabase, screen);
   const widgets: WidgetMap = {
