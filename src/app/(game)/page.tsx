@@ -1,3 +1,4 @@
+import { GameScreen } from "@/components/stage/GameScreen";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { devGrantItems, devGrantMonster, devGrantPerica } from "./dev-actions";
@@ -8,7 +9,7 @@ const MENU = [
   { href: "/items", title: "アイテム", text: "持っているアイテムを確認・使用" },
 ];
 
-export default async function Home() {
+async function HomeContent() {
   const { supabase, user } = await requireUser();
   const [{ data: profile }, { count: monsterCount }, { data: active }] = await Promise.all([
     supabase.from("profiles").select("display_name").eq("id", user.id).maybeSingle(),
@@ -64,4 +65,8 @@ export default async function Home() {
       )}
     </div>
   );
+}
+
+export default async function Home() {
+  return <GameScreen screen="home" main={<HomeContent />} />;
 }

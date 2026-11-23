@@ -1,8 +1,9 @@
+import { GameScreen } from "@/components/stage/GameScreen";
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { StartButton } from "./StartButton";
 
-export default async function ExplorePage() {
+async function ExplorePageContent() {
   const { supabase, user } = await requireUser();
   const [{ data: areas }, { data: active }] = await Promise.all([
     supabase
@@ -56,4 +57,8 @@ export default async function ExplorePage() {
       )}
     </div>
   );
+}
+
+export default async function ExplorePage() {
+  return <GameScreen screen="explore" main={<ExplorePageContent />} />;
 }

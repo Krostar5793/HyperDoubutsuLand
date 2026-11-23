@@ -53,7 +53,7 @@ export function MonsterBoard({ monsters, boxCapacity }: { monsters: BoardMonster
   return (
     <div className="space-y-6">
       {selectedMonster && (
-        <div className="sticky top-16 z-10 flex flex-wrap items-center gap-2 rounded-xl bg-emerald-600 p-3 text-sm text-white shadow">
+        <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-xl bg-emerald-600 p-3 text-sm text-white shadow">
           <span className="font-semibold">{selectedMonster.name}</span> を選択中。移動先の枠を押してください。
           {selectedMonster.slot !== null && (
             <button onClick={() => moveTo(null)} className="rounded bg-white/20 px-2 py-1">

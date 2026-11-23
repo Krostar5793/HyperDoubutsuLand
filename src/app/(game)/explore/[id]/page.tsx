@@ -1,9 +1,10 @@
+import { GameScreen } from "@/components/stage/GameScreen";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import type { StepEvent } from "@/lib/game/explore";
 import { ExpeditionRunner } from "./ExpeditionRunner";
 
-export default async function ExpeditionPage({ params }: { params: Promise<{ id: string }> }) {
+async function ExpeditionPageContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase, user } = await requireUser();
 
@@ -41,4 +42,8 @@ export default async function ExpeditionPage({ params }: { params: Promise<{ id:
       }}
     />
   );
+}
+
+export default async function ExpeditionPage(props: { params: Promise<{ id: string }> }) {
+  return <GameScreen screen="explore_run" main={<ExpeditionPageContent {...props} />} />;
 }

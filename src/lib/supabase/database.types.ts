@@ -421,14 +421,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "box_capacity": number,"created_at": string,"display_name": string,"id": string,"updated_at": string
+                    "box_capacity": number,"created_at": string,"display_name": string,"id": string,"is_admin": boolean,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "box_capacity"?: number,"created_at"?: string,"display_name": string,"id": string,"updated_at"?: string
+                    "box_capacity"?: number,"created_at"?: string,"display_name": string,"id": string,"is_admin"?: boolean,"updated_at"?: string
                   }
                   Update: {
-                    "box_capacity"?: number,"created_at"?: string,"display_name"?: string,"id"?: string,"updated_at"?: string
+                    "box_capacity"?: number,"created_at"?: string,"display_name"?: string,"id"?: string,"is_admin"?: boolean,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -559,6 +559,40 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"UI_Elements": {
+                  Row: {
+                    "height": number,"id": string,"props": NonNullable<Json>,"screen_key": string,"type": string,"width": number,"x": number,"y": number,"z_index": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "height"?: number,"id"?: string,"props"?: NonNullable<Json>,"screen_key": string,"type": string,"width"?: number,"x"?: number,"y"?: number,"z_index"?: number
+                  }
+                  Update: {
+                    "height"?: number,"id"?: string,"props"?: NonNullable<Json>,"screen_key"?: string,"type"?: string,"width"?: number,"x"?: number,"y"?: number,"z_index"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "UI_Elements_screen_key_fkey"
+      columns: ["screen_key"]
+isOneToOne: false
+      referencedRelation: "UI_Screens"
+      referencedColumns: ["key"]
+    }
+                  ]
+                },"UI_Screens": {
+                  Row: {
+                    "background_color": string | null,"background_image_path": string | null,"key": string,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "background_color"?: string | null,"background_image_path"?: string | null,"key": string,"updated_at"?: string
+                  }
+                  Update: {
+                    "background_color"?: string | null,"background_image_path"?: string | null,"key"?: string,"updated_at"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 }
           }
           Views: {
@@ -594,6 +628,9 @@ isOneToOne: false
               "in_storage": boolean,"monster_id": string
             }[]
                            },
+"is_admin":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
 "move_monster":
 { Args: { "p_monster_id": string,"p_target_slot": number }; Returns: undefined
                            },
@@ -602,6 +639,12 @@ isOneToOne: false
                            },
 "release_monster":
 { Args: { "p_monster_id": string }; Returns: undefined
+                           },
+"reset_ui_layout":
+{ Args: { "p_screen_key": string }; Returns: undefined
+                           },
+"save_ui_layout":
+{ Args: { "p_background_color": string,"p_background_image_path": string,"p_elements": Json,"p_screen_key": string }; Returns: undefined
                            },
 "spend_currency":
 { Args: { "p_amount": number,"p_currency_code": string,"p_owner_id": string }; Returns: number

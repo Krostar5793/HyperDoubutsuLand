@@ -1,7 +1,8 @@
+import { GameScreen } from "@/components/stage/GameScreen";
 import { requireUser } from "@/lib/auth";
 import { MonsterBoard, type BoardMonster } from "./MonsterBoard";
 
-export default async function MonstersPage() {
+async function MonstersPageContent() {
   const { supabase, user } = await requireUser();
   const [{ data: monsters, error }, { data: profile }] = await Promise.all([
     supabase
@@ -30,4 +31,8 @@ export default async function MonstersPage() {
       <MonsterBoard monsters={list} boxCapacity={profile?.box_capacity ?? 0} />
     </div>
   );
+}
+
+export default async function MonstersPage() {
+  return <GameScreen screen="monsters" main={<MonstersPageContent />} />;
 }

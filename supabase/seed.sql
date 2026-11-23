@@ -2,6 +2,7 @@
 
 insert into public."Elements" (id, name) values (1, '火'), (2, '水'), (3, '草')
   on conflict do nothing;
+select setval(pg_get_serial_sequence('public."Elements"', 'id'), 100);
 insert into public."Element_Matchups" (attack_element_id, defense_element_id, level) values
   (1, 3, 'weak'), (2, 1, 'weak'), (3, 2, 'weak'),
   (1, 2, 'resist'), (2, 3, 'resist'), (3, 1, 'resist')

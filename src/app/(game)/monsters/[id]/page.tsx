@@ -1,3 +1,4 @@
+import { GameScreen } from "@/components/stage/GameScreen";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MonsterImage } from "@/components/MonsterImage";
@@ -7,7 +8,7 @@ import { SLOT_LABEL, STAT_LABELS } from "@/lib/game/names";
 import { toRankTable } from "@/lib/game/ranks";
 import { MonsterActions } from "./MonsterActions";
 
-export default async function MonsterDetailPage({ params }: { params: Promise<{ id: string }> }) {
+async function MonsterDetailPageContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase, user } = await requireUser();
   const [{ data: m }, { data: ranks }] = await Promise.all([
@@ -68,4 +69,8 @@ export default async function MonsterDetailPage({ params }: { params: Promise<{ 
       />
     </div>
   );
+}
+
+export default async function MonsterDetailPage(props: { params: Promise<{ id: string }> }) {
+  return <GameScreen screen="monster_detail" main={<MonsterDetailPageContent {...props} />} />;
 }

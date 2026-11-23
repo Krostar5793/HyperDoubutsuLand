@@ -1,7 +1,8 @@
+import { GameScreen } from "@/components/stage/GameScreen";
 import { requireUser } from "@/lib/auth";
 import { UseItemButton } from "./UseItemButton";
 
-export default async function ItemsPage() {
+async function ItemsPageContent() {
   const { supabase, user } = await requireUser();
   const [{ data: owned }, { data: money }] = await Promise.all([
     supabase
@@ -54,4 +55,8 @@ export default async function ItemsPage() {
       </section>
     </div>
   );
+}
+
+export default async function ItemsPage() {
+  return <GameScreen screen="items" main={<ItemsPageContent />} />;
 }

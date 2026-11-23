@@ -122,7 +122,7 @@ export function ExpeditionRunner({
         <div className="h-full bg-emerald-500 transition-all" style={{ width: `${progress * 100}%` }} />
       </div>
 
-      <ol className="max-h-[55vh] space-y-2 overflow-y-auto rounded-xl border border-black/10 p-3 text-sm dark:border-white/15">
+      <ol className="max-h-[400px] space-y-2 overflow-y-auto rounded-xl border border-black/10 p-3 text-sm dark:border-white/15">
         {log.length === 0 && <li className="opacity-60">探索を始めます…</li>}
         {log.map((e, i) => (
           <li key={i} className="flex gap-2">

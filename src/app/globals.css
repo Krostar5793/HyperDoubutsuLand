@@ -24,3 +24,15 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ゲーム画面（ステージ）の基本色。UI エディタで背景色を設定すると上書きされる */
+:root {
+  --stage-bg: #ffffff;
+  --stage-fg: #171717;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --stage-bg: #0a0a0a;
+    --stage-fg: #ededed;
+  }
+}
