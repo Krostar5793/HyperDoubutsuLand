@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types";
 
 /**
  * サーバー専用の管理者クライアント（service_role キー）。
@@ -12,7 +13,7 @@ export function createAdminClient() {
   if (!url || !key) {
     throw new Error("SUPABASE_SERVICE_ROLE_KEY が設定されていません（.env.local を確認してください）");
   }
-  return createClient(url, key, {
+  return createClient<Database>(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
