@@ -1,3 +1,5 @@
+import { DEFAULT_RANK_TABLE, getRank, type RankTable } from "./ranks";
+
 /**
  * 育成（レベル・経験値・ステータス・リミットポイント（LP））の計算。
  *
@@ -5,19 +7,7 @@
  *   ここの定数や式を変えるときは、マイグレーションの SQL も合わせて変えること。
  */
 
-export const RANKS = ["SS", "S", "A", "B", "C", "D", "E"] as const;
-export type Rank = (typeof RANKS)[number];
-
-/** 必要経験値のランク係数 */
-export const RANK_EXP_RATE: Record<Rank, number> = {
-  SS: 2.0,
-  S: 1.8,
-  A: 1.6,
-  B: 1.4,
-  C: 1.2,
-  D: 1.0,
-  E: 0.8,
-};
+export { RANKS, type Rank } from "./ranks";
 
 export const GROWTH = {
   /** Lv1→2 の必要経験値の基準 */
@@ -71,17 +61,14 @@ export type MonsterGrowthData = {
   limit_points: number;
 } & Record<`alloc_${Stat}`, number>;
 
-export function rankRate(rank: string | null): number {
-  if (rank === null || !(rank in RANK_EXP_RATE)) {
-    throw new Error(`ランクが未設定または不正です: ${rank}`);
-  }
-  return RANK_EXP_RATE[rank as Rank];
-}
-
-/** level → level+1 に必要な経験値 */
-export function expToNext(level: number, rank: string | null): number {
+/** level → level+1 に必要な経験値（ランク係数は Ranks.exp_rate） */
+export function expToNext(
+  level: number,
+  rank: string | null,
+  ranks: RankTable = DEFAULT_RANK_TABLE,
+): number {
   return Math.floor(
-    GROWTH.baseExp * Math.pow(GROWTH.expGrowth, level - 1) * rankRate(rank),
+    GROWTH.baseExp * Math.pow(GROWTH.expGrowth, level - 1) * getRank(rank, ranks).exp_rate,
   );
 }
 
@@ -133,13 +120,14 @@ export function gainExp(
   monster: Pick<MonsterGrowthData, "level" | "exp" | "level_cap" | "limit_points">,
   rank: string | null,
   amount: number,
+  ranks: RankTable = DEFAULT_RANK_TABLE,
 ): ExpGainResult {
   let { level, exp, limit_points } = monster;
   let rest = exp + amount;
   let levelsGained = 0;
 
   while (level < monster.level_cap) {
-    const need = expToNext(level, rank);
+    const need = expToNext(level, rank, ranks);
     if (rest < need) break;
     rest -= need;
     level += 1;
