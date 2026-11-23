@@ -10,6 +10,7 @@ async function ExplorePageContent() {
       .from("Areas")
       .select("id, name, description, clear_amount, clear_currency_code, squares:Area_Squares(count)")
       .eq("is_active", true)
+      .eq("is_tutorial", false)
       .order("sort_order")
       .order("id"),
     supabase

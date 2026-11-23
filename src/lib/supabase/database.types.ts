@@ -129,14 +129,14 @@ isOneToOne: false
                   ]
                 },"Areas": {
                   Row: {
-                    "clear_amount": number,"clear_currency_code": string,"description": string | null,"id": number,"image_path": string | null,"is_active": boolean,"max_enemies": number,"min_enemies": number,"name": string,"sort_order": number
+                    "clear_amount": number,"clear_currency_code": string,"description": string | null,"id": number,"image_path": string | null,"is_active": boolean,"is_tutorial": boolean,"max_enemies": number,"min_enemies": number,"name": string,"sort_order": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "clear_amount"?: number,"clear_currency_code"?: string,"description"?: string | null,"id"?: number,"image_path"?: string | null,"is_active"?: boolean,"max_enemies"?: number,"min_enemies"?: number,"name": string,"sort_order"?: number
+                    "clear_amount"?: number,"clear_currency_code"?: string,"description"?: string | null,"id"?: number,"image_path"?: string | null,"is_active"?: boolean,"is_tutorial"?: boolean,"max_enemies"?: number,"min_enemies"?: number,"name": string,"sort_order"?: number
                   }
                   Update: {
-                    "clear_amount"?: number,"clear_currency_code"?: string,"description"?: string | null,"id"?: number,"image_path"?: string | null,"is_active"?: boolean,"max_enemies"?: number,"min_enemies"?: number,"name"?: string,"sort_order"?: number
+                    "clear_amount"?: number,"clear_currency_code"?: string,"description"?: string | null,"id"?: number,"image_path"?: string | null,"is_active"?: boolean,"is_tutorial"?: boolean,"max_enemies"?: number,"min_enemies"?: number,"name"?: string,"sort_order"?: number
                   }
                   Relationships: [
                     {
@@ -285,6 +285,20 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"Guide_Pages": {
+                  Row: {
+                    "body": string,"key": string,"show_in_help": boolean,"sort_order": number,"title": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "body": string,"key": string,"show_in_help"?: boolean,"sort_order"?: number,"title": string
+                  }
+                  Update: {
+                    "body"?: string,"key"?: string,"show_in_help"?: boolean,"sort_order"?: number,"title"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"Items": {
                   Row: {
                     "description": string | null,"effect_type": string,"effect_value": number | null,"id": number,"image_path": string | null,"name": string,"usable_in_battle": boolean,"usable_in_field": boolean
@@ -413,14 +427,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "box_capacity": number,"created_at": string,"display_name": string,"id": string,"is_admin": boolean,"updated_at": string
+                    "box_capacity": number,"created_at": string,"display_name": string,"id": string,"is_admin": boolean,"starter_chosen": boolean,"tutorial_state": string,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "box_capacity"?: number,"created_at"?: string,"display_name": string,"id": string,"is_admin"?: boolean,"updated_at"?: string
+                    "box_capacity"?: number,"created_at"?: string,"display_name": string,"id": string,"is_admin"?: boolean,"starter_chosen"?: boolean,"tutorial_state"?: string,"updated_at"?: string
                   }
                   Update: {
-                    "box_capacity"?: number,"created_at"?: string,"display_name"?: string,"id"?: string,"is_admin"?: boolean,"updated_at"?: string
+                    "box_capacity"?: number,"created_at"?: string,"display_name"?: string,"id"?: string,"is_admin"?: boolean,"starter_chosen"?: boolean,"tutorial_state"?: string,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -600,6 +614,26 @@ isOneToOne: false
       columns: ["status_effect_id"]
 isOneToOne: false
       referencedRelation: "Status_Effects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"Starter_Options": {
+                  Row: {
+                    "level": number,"message": string | null,"sort_order": number,"species_id": number
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "level"?: number,"message"?: string | null,"sort_order"?: number,"species_id": number
+                  }
+                  Update: {
+                    "level"?: number,"message"?: string | null,"sort_order"?: number,"species_id"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "Starter_Options_species_id_fkey"
+      columns: ["species_id"]
+isOneToOne: true
+      referencedRelation: "Monster_Species"
       referencedColumns: ["id"]
     }
                   ]

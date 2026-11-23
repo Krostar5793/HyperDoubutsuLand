@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { BattleState } from "@/lib/game/battle";
 import type { StepEvent } from "@/lib/game/explore";
+import { GuideModal, type Guide } from "@/components/GuideModal";
+import { StarterPicker, type StarterOption } from "@/components/StarterPicker";
+import { chooseStarterAction } from "../../welcome/actions";
 import { advanceAction, loadBattleAction, retreatAction } from "../actions";
 import { BattleView, type BattleItem } from "./BattleView";
 
@@ -59,6 +62,7 @@ function describe(e: LogEntry, names: Names): string {
 }
 
 export function ExpeditionRunner({
+  tutorial,
   expeditionId,
   areaName,
   clearAmount,
@@ -76,7 +80,21 @@ export function ExpeditionRunner({
   initialBattle: { id: string; state: BattleState } | null;
   battleItems: BattleItem[];
   names: Names;
+  /** チュートリアル中なら、ガイドと最初のモンスターの候補 */
+  tutorial: { guides: Record<string, Guide>; starterOptions: StarterOption[] } | null;
 }) {
+  // チュートリアルのガイド（表示待ちの列）と、すでに見たガイド
+  const [guideQueue, setGuideQueue] = useState<Guide[]>(() =>
+    tutorial && initial.log.length === 0 ? (["intro", "explore"].map((k) => tutorial.guides[k]).filter(Boolean)) : [],
+  );
+  const shown = useRef(new Set<string>(["intro", "explore"]));
+  const showGuides = (...keys: string[]) => {
+    if (!tutorial) return;
+    const next = keys.filter((k) => !shown.current.has(k) && tutorial.guides[k]);
+    next.forEach((k) => shown.current.add(k));
+    if (next.length) setGuideQueue((q) => [...q, ...next.map((k) => tutorial.guides[k])]);
+  };
+  const [needStarter, setNeedStarter] = useState(false);
   const [status, setStatus] = useState<Status>(initial.status);
   const [position, setPosition] = useState(initial.position);
   const [log, setLog] = useState<LogEntry[]>(initial.log);
@@ -89,7 +107,7 @@ export function ExpeditionRunner({
 
   // 自動で 1 マスずつ進める（ポーズ中・戦闘中・通信中・エラー時は止める）
   useEffect(() => {
-    if (status !== "exploring" || paused || busy || error || battle || summary) return;
+    if (status !== "exploring" || paused || busy || error || battle || summary || needStarter || guideQueue.length) return;
     const timer = setTimeout(async () => {
       setBusy(true);
       const res = await advanceAction(expeditionId);
@@ -99,18 +117,36 @@ export function ExpeditionRunner({
         return;
       }
       const r = res.result;
-      setLog((l) => [...l, r.event]);
+      if (r.event.type === "need_starter") {
+        setBusy(false);
+        setNeedStarter(true);
+        showGuides("starter");
+        return;
+      }
+      const ev = r.event;
+      setLog((l) => [...l, ev]);
+      if (ev.type === "loot") showGuides("loot");
       setPosition(r.position);
       if (r.finish) setStatus(r.finish);
       if (r.battleId) {
         const b = await loadBattleAction(r.battleId);
-        if (b.state) setBattle({ id: r.battleId, state: b.state });
+        if (b.state) {
+          setBattle({ id: r.battleId, state: b.state });
+          showGuides("battle");
+        }
         else setError(b.error ?? "戦闘を読み込めませんでした");
       }
       setBusy(false);
     }, STEP_INTERVAL);
     return () => clearTimeout(timer);
-  }, [status, paused, busy, error, battle, summary, expeditionId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, paused, busy, error, battle, summary, needStarter, guideQueue.length, expeditionId]);
+
+  // チュートリアルの終わり
+  useEffect(() => {
+    if (status !== "exploring" && !battle) showGuides("party", "finish");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, battle]);
 
   useEffect(() => {
     logEnd.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -140,7 +176,31 @@ export function ExpeditionRunner({
   const closeBattle = () => {
     setSummary(null);
     setBattle(null);
+    showGuides("recruit");
   };
+
+  const guide = guideQueue[0] ?? null;
+  const guideModal = guide && (
+    <GuideModal guide={guide} onClose={() => setGuideQueue((q) => q.slice(1))} buttonLabel={guideQueue.length > 1 ? "次へ" : "閉じる"} />
+  );
+
+  // チュートリアル: 初めての戦闘の前に、最初のモンスターを選ぶ
+  if (needStarter && tutorial) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold">最初の仲間を選ぼう</h1>
+        <StarterPicker
+          options={tutorial.starterOptions}
+          onChoose={async (id) => {
+            const res = await chooseStarterAction(id);
+            if (!res.error) setNeedStarter(false);
+            return res;
+          }}
+        />
+        {guideModal}
+      </div>
+    );
+  }
 
   const retreat = async () => {
     if (!confirm("引き返しますか？ここまでに拾ったものは持ち帰れますが、クリア報酬はもらえません。")) return;
@@ -169,6 +229,7 @@ export function ExpeditionRunner({
         <div className="min-h-0 flex-1">
           <BattleView battleId={battle.id} initial={battle.state} items={battleItems} onFinished={onBattleFinished} />
         </div>
+        {guideModal}
         {summary && (
           <div className="rounded-lg bg-black/5 p-3 text-sm dark:bg-white/10">
             <p className="font-bold">{summary.outcome === "won" ? "戦闘に勝利した！" : "パーティは全滅してしまった…"}</p>
@@ -232,6 +293,7 @@ export function ExpeditionRunner({
         </div>
       )}
 
+      {guideModal}
       {status === "exploring" ? (
         <div className="flex gap-2">
           <button
@@ -240,7 +302,7 @@ export function ExpeditionRunner({
           >
             {paused ? "再開" : "ポーズ"}
           </button>
-          {paused && (
+          {paused && !tutorial && (
             <button
               disabled={busy}
               onClick={retreat}
@@ -253,7 +315,7 @@ export function ExpeditionRunner({
       ) : (
         <div className="space-y-3 rounded-xl bg-black/5 p-4 dark:bg-white/10">
           <p className="text-lg font-bold">
-            {status === "cleared" && "探索クリア！"}
+            {status === "cleared" && (tutorial ? "チュートリアルクリア！" : "探索クリア！")}
             {status === "failed" && "全滅してしまった…"}
             {status === "retreated" && "探索から戻った"}
           </p>

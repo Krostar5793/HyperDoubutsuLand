@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import type { BattleState } from "@/lib/game/battle";
 import type { StepEvent } from "@/lib/game/explore";
+import { loadGuides, starterOptionsForView } from "@/lib/game/tutorial-data";
 import { ExpeditionRunner } from "./ExpeditionRunner";
 
 async function ExpeditionPageContent({ params }: { params: Promise<{ id: string }> }) {
@@ -11,7 +12,7 @@ async function ExpeditionPageContent({ params }: { params: Promise<{ id: string 
 
   const { data: exp } = await supabase
     .from("Expeditions")
-    .select("id, status, position, log, battle_id, area:Areas(id, name, clear_amount)")
+    .select("id, status, position, log, battle_id, area:Areas(id, name, clear_amount, is_tutorial)")
     .eq("id", id)
     .eq("owner_id", user.id)
     .maybeSingle();
@@ -37,8 +38,14 @@ async function ExpeditionPageContent({ params }: { params: Promise<{ id: string 
         .eq("item.effect_type", "recruit_boost"),
     ]);
 
+  const isTutorial = exp.area.is_tutorial;
+  const [guides, starterOptions] = isTutorial
+    ? await Promise.all([loadGuides(supabase), starterOptionsForView(supabase)])
+    : [{}, []];
+
   return (
     <ExpeditionRunner
+      tutorial={isTutorial ? { guides, starterOptions } : null}
       expeditionId={exp.id}
       areaName={exp.area.name}
       clearAmount={exp.area.clear_amount}

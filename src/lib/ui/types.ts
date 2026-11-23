@@ -14,6 +14,7 @@ export const WIDGETS = {
   area_list: "エリア一覧",
   expedition_runner: "探索の進行",
   item_list: "所持品",
+  help: "ヘルプ",
 } as const;
 export type WidgetKind = keyof typeof WIDGETS;
 
@@ -25,6 +26,7 @@ export const SCREENS = {
   explore: { name: "探索（エリア選択）", path: "/explore", main: "area_list" },
   explore_run: { name: "探索中", path: null, main: "expedition_runner" },
   items: { name: "アイテム", path: "/items", main: "item_list" },
+  help: { name: "ヘルプ", path: "/help", main: "help" },
 } as const satisfies Record<string, { name: string; path: string | null; main: WidgetKind }>;
 export type ScreenKey = keyof typeof SCREENS;
 
@@ -76,6 +78,7 @@ const NAV: { label: string; to: string }[] = [
   { label: "モンスター", to: "/monsters" },
   { label: "探索", to: "/explore" },
   { label: "アイテム", to: "/items" },
+  { label: "ヘルプ", to: "/help" },
 ];
 
 /** 初期配置: 上にステータスバー、左にメニューボタン、右に画面の中身 */

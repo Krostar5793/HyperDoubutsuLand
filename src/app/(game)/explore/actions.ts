@@ -11,6 +11,7 @@ import {
 } from "@/lib/game/expedition";
 import type { BattleState, Command } from "@/lib/game/battle";
 import { submitBattleTurn, type TurnResult } from "@/lib/game/battle-server";
+import { completeTutorialIfEnded } from "@/lib/game/tutorial";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function startExpeditionAction(areaId: number) {
@@ -36,8 +37,12 @@ export async function advanceAction(
 ): Promise<{ result?: AdvanceResult; error?: string }> {
   const { user } = await requireUser();
   try {
-    const result = await advanceExpedition(createAdminClient(), user.id, expeditionId);
-    if (result.finish) revalidatePath("/", "layout");
+    const admin = createAdminClient();
+    const result = await advanceExpedition(admin, user.id, expeditionId);
+    if (result.finish) {
+      await completeTutorialIfEnded(admin, user.id, expeditionId);
+      revalidatePath("/", "layout");
+    }
     return { result };
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };
@@ -47,7 +52,9 @@ export async function advanceAction(
 export async function retreatAction(expeditionId: string): Promise<{ error?: string }> {
   const { user } = await requireUser();
   try {
-    await retreatExpedition(createAdminClient(), user.id, expeditionId);
+    const admin = createAdminClient();
+    await retreatExpedition(admin, user.id, expeditionId);
+    await completeTutorialIfEnded(admin, user.id, expeditionId);
     revalidatePath("/", "layout");
     return {};
   } catch (e) {
@@ -61,8 +68,13 @@ export async function battleTurnAction(
 ): Promise<{ result?: TurnResult; error?: string }> {
   const { user } = await requireUser();
   try {
-    const result = await submitBattleTurn(createAdminClient(), user.id, battleId, commands);
-    if (result.finished) revalidatePath("/", "layout");
+    const admin = createAdminClient();
+    const result = await submitBattleTurn(admin, user.id, battleId, commands);
+    if (result.finished) {
+      const { data: b } = await admin.from("Battles").select("expedition_id").eq("id", battleId).single();
+      if (b) await completeTutorialIfEnded(admin, user.id, b.expedition_id);
+      revalidatePath("/", "layout");
+    }
     return { result };
   } catch (e) {
     return { error: e instanceof Error ? e.message : String(e) };

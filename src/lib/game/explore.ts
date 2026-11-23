@@ -43,6 +43,8 @@ export type AreaBoss = { slot: number; species_id: number; level: number };
 
 export type AreaConfig = {
   id: number;
+  /** チュートリアル用のエリア */
+  isTutorial?: boolean;
   min_enemies: number;
   max_enemies: number;
   squares: AreaSquare[];

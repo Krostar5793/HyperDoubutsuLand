@@ -17,9 +17,9 @@ type Admin = SupabaseClient<Database>;
 
 export async function loadAreaConfig(supabase: Admin, areaId: number): Promise<AreaConfig> {
   const area = one(
-    await supabase.from("Areas").select("id, min_enemies, max_enemies, is_active").eq("id", areaId).single(),
+    await supabase.from("Areas").select("id, min_enemies, max_enemies, is_active, is_tutorial").eq("id", areaId).single(),
   );
-  if (!area.is_active) throw new Error("このエリアは現在探索できません");
+  if (!area.is_active && !area.is_tutorial) throw new Error("このエリアは現在探索できません");
   const [squares, encounters, loot, bosses] = await Promise.all([
     supabase.from("Area_Squares").select("position, monster_rate, item_rate, chest_rate, choice_rate").eq("area_id", areaId),
     supabase.from("Area_Encounters").select("species_id, weight, min_level, max_level").eq("area_id", areaId),
@@ -28,6 +28,7 @@ export async function loadAreaConfig(supabase: Admin, areaId: number): Promise<A
   ]);
   return {
     id: area.id,
+    isTutorial: area.is_tutorial,
     min_enemies: area.min_enemies,
     max_enemies: area.max_enemies,
     squares: rows(squares),
@@ -44,7 +45,8 @@ export async function startExpedition(supabase: Admin, userId: string, areaId: n
   );
   if (active) return { expeditionId: active.id as string, resumed: true };
 
-  await loadAreaConfig(supabase, areaId); // エリアが探索できるか確認
+  const area = await loadAreaConfig(supabase, areaId); // エリアが探索できるか確認
+  if (area.isTutorial) throw new Error("このエリアはチュートリアル専用です");
   const row = one(
     await supabase.from("Expeditions").insert({ owner_id: userId, area_id: areaId }).select("id").single(),
   );
@@ -52,7 +54,8 @@ export async function startExpedition(supabase: Admin, userId: string, areaId: n
 }
 
 export type AdvanceResult = {
-  event: StepEvent;
+  /** need_starter: チュートリアルで、戦闘の前に最初のモンスターを選ぶ必要がある（マスは進んでいない） */
+  event: StepEvent | { type: "need_starter"; position: number };
   finish: "cleared" | null;
   position: number;
   totalSquares: number;
@@ -80,6 +83,20 @@ export async function advanceExpedition(
 
   const area = await loadAreaConfig(supabase, exp.area_id);
   const plan = planStep(area, exp.position, { random: options.random });
+
+  if (plan.encounter && area.isTutorial) {
+    // チュートリアル: 初めての戦闘の前に、最初のモンスターを選んでもらう
+    const profile = one(await supabase.from("profiles").select("starter_chosen").eq("id", userId).single());
+    if (!profile.starter_chosen) {
+      return {
+        event: { type: "need_starter", position: exp.position + 1 },
+        finish: null,
+        position: exp.position,
+        totalSquares: area.squares.length,
+        battleId: null,
+      };
+    }
+  }
 
   if (plan.encounter) {
     const state = await buildBattle(

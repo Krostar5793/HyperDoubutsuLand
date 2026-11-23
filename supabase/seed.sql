@@ -87,3 +87,24 @@ insert into public."Species_Skills" (species_id, slot, skill_id) values
   (4, 1, 5), (4, 2, 6),
   (5, 1, 1), (5, 2, 8), (5, 3, 6)
   on conflict do nothing;
+
+-- チュートリアル用のエリア（ボスなし。3 マス目で必ず戦闘）
+insert into public."Areas" (id, name, description, clear_amount, min_enemies, max_enemies, is_tutorial, sort_order) values
+  (2, 'はじめての草むら', 'チュートリアル用のエリア。', 100, 1, 1, true, 0)
+  on conflict do nothing;
+insert into public."Area_Squares" (area_id, position, monster_rate, item_rate, chest_rate, choice_rate) values
+  (2, 1, 0, 100, 0, 0),
+  (2, 2, 0, 0, 100, 0),
+  (2, 3, 100, 0, 0, 0)
+  on conflict do nothing;
+insert into public."Area_Encounters" (area_id, species_id, weight, min_level, max_level) values (2, 1, 1, 1, 1);
+insert into public."Area_Loot" (area_id, source, item_id, currency_code, weight, min_quantity, max_quantity) values
+  (2, 'field', 3, null, 1, 1, 1),
+  (2, 'chest', 1, null, 1, 2, 2);
+
+-- 最初のモンスターの候補
+insert into public."Starter_Options" (species_id, level, message, sort_order) values
+  (2, 3, '元気いっぱいの火属性。素早く動いて攻撃するのが得意。', 1),
+  (3, 3, '風を操る草属性。仲間の回復もできる。', 2),
+  (4, 3, 'とても打たれ強い。のんびり屋だが頼れる守りの要。', 3)
+  on conflict do nothing;
