@@ -25,6 +25,7 @@ create table public."Monster_Species" (
   image_path text,
   -- パーティ編成の制限に使う予定のサイズ（ルールは別途決定）
   size bigint,
+  hp bigint,
   atk bigint,
   def bigint,
   int bigint,
@@ -71,7 +72,8 @@ create table public."Player_Monsters" (
   level int not null default 1 check (level >= 1),
   exp bigint not null default 0 check (exp >= 0),
   party_slot bigint check (party_slot between 1 and 8),
-  -- 個体ごとのステータス（成長で図鑑の値から変化する）
+  -- 個体ごとのステータス（成長で図鑑の値から変化する）。hp は最大 HP
+  hp bigint,
   atk bigint,
   def bigint,
   int bigint,

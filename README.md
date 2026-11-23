@@ -43,6 +43,20 @@ supabase/
 - **編成の変更**: `supabase.rpc("move_monster", { p_monster_id, p_target_slot })` を呼びます。移動先に別のモンスターがいれば入れ替わり、`p_target_slot` に `null` を渡すと控えに移ります。
 - **枠番号の定義**: `src/lib/game/party.ts` にあります。
 
+### 属性・状態異常と耐性
+| テーブル | 中身 |
+| --- | --- |
+| `Resistance_Levels` | 耐性の段階（弱点 2倍 / 普通 1倍 / 耐性 0.6倍 / 適応 0.2倍 / 無効 0倍 / 吸収 / 反射）。倍率はここで調整 |
+| `Elements` | 属性の一覧。`Monster_Species.element_id`（1体に1つ）と `Skills.element_id`（空なら無属性）で参照 |
+| `Element_Matchups` | 属性のすくみ（攻撃側の属性 → 防御側の属性 → 耐性段階） |
+| `Species_Element_Resistances` | 種族ごとの属性耐性の上書き（すくみと違う耐性を持たせたいときだけ） |
+| `Status_Effects` | 状態異常の一覧 |
+| `Species_Status_Resistances` | 種族ごとの状態異常耐性 |
+
+- 登録のない組み合わせはすべて「普通（等倍）」です。特徴のあるものだけ入力すれば OK です。
+- 実際の耐性は DB 関数で求めます: `element_resistance(種族id, 攻撃の属性id)`（上書き → すくみ → 普通 の順）、`status_resistance(種族id, 状態異常id)`。
+- ダメージへの適用は `src/lib/game/resistance.ts` の `applyResistance` を使います。
+
 ## 開発の始め方（クラウドの Supabase を使う）
 
 必要なもの: Node.js 20 以上（Docker は不要）
