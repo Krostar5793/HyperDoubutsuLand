@@ -22,6 +22,25 @@ supabase/
   migrations/          DB スキーマ（SQL マイグレーション）
 ```
 
+## ゲームデータの仕組み
+
+### モンスター図鑑（`monster_species`）
+- **データの入力**: ダッシュボードの Table Editor で行います。アプリからは読むことしかできません。
+- **画像**: Storage の `monster-images` バケット（公開）にアップロードし、そのファイルパス（例: `slime.png`）を `image_path` 列に入れます。
+- **列を増やすときの注意**: Table Editor ではなく、`supabase/migrations/` に SQL を追加して変更してください。
+
+### 所持モンスター（`player_monsters`）
+| `party_slot` | 扱い |
+| --- | --- |
+| 1〜4 | バトルメンバー |
+| 5〜8 | スタンバイメンバー |
+| NULL | 控え |
+
+- **控えの上限**: `profiles.box_capacity`（初期値 100）。超えるとDB側でエラーになります。
+- **プレイヤーにできないこと**: `box_capacity` は書き換えられません。上限を上げるのはアイテム使用の処理を通してのみです。
+- **編成の変更**: `supabase.rpc("move_monster", { p_monster_id, p_target_slot })` を呼びます。移動先に別のモンスターがいれば入れ替わり、`p_target_slot` に `null` を渡すと控えに移ります。
+- **枠番号の定義**: `src/lib/game/party.ts` にあります。
+
 ## 開発の始め方（クラウドの Supabase を使う）
 
 必要なもの: Node.js 20 以上（Docker は不要）
@@ -29,7 +48,7 @@ supabase/
 ### 1. Supabase のプロジェクトを作る
 
 1. https://supabase.com で新しいプロジェクトを作成
-2. ダッシュボードの **SQL Editor** を開き、`supabase/migrations/` 内の SQL ファイルを**ファイル名の順に**貼り付けて実行
+2. ダッシュボードの **SQL Editor** を開き、`supabase/migrations/` 内の SQL ファイルを**ファイル名の順に**（古い順に）1つずつ貼り付けて実行
 3. 開発中は **Authentication > Sign In / Providers > Email** の「Confirm email」をオフにしておくと、登録後すぐログインできます
 
 ### 2. 接続情報を設定する
